@@ -40,18 +40,18 @@ USE UPLOAD.PY INSTEAD.
 
 
 MAPILLARY_UPLOAD_URL = "https://s3-eu-west-1.amazonaws.com/mapillary.uploads.manual.images"
-NUMBER_THREADS = 4
+NUMBER_THREADS = int(os.getenv('NUMBER_THREADS', '4'))
 MOVE_FILES = False
 
 
 def upload_done_file(params):
     print("Upload a DONE file to tell the backend that the sequence is all uploaded and ready to submit.")
-    if not os.path.exists('DONE'):
+    if not os.path.exists("DONE"):
         open("DONE", 'a').close()
     #upload
     upload_file("DONE", **params)
     #remove
-    if not MOVE_FILES:
+    if os.path.exists("DONE"):
         os.remove("DONE")
 
 
@@ -102,6 +102,9 @@ if __name__ == '__main__':
     You also need upload.py in the same folder or in your PYTHONPATH since this
     script uses pieces of that.
     '''
+    if sys.version_info >= (3, 0):
+        raise IOError("Incompatible Python version. This script requires Python 2.x, you are using {0}.".format(sys.version_info[:2]))
+
 
     if len(sys.argv) < 2:
         print("Usage: python upload_with_authentication.py path")
@@ -119,6 +122,7 @@ if __name__ == '__main__':
         file_list = []
         for root, sub_folders, files in os.walk(path):
             file_list += [os.path.join(root, filename) for filename in files if filename.lower().endswith(".jpg")]
+        print "found %d images for upload" % (len(file_list))
 
     # get env variables
     try:

@@ -30,13 +30,12 @@ FILES WILL BE IGNORED SERVER-SIDE.
 '''
 
 MAPILLARY_UPLOAD_URL = "https://d22zcsn13kp53w.cloudfront.net/"
-PERMISSION_HASH = "eyJleHBpcmF0aW9uIjoiMjAyMC0wMS0wMVQwMDowMDowMFoiLCJjb25kaXRpb25zIjpbeyJidWNrZXQiOiJtYXBpbGxhcnkudXBsb2Fkcy5pbWFnZXMifSxbInN0YXJ0cy13aXRoIiwiJGtleSIsIiJdLHsiYWNsIjoicHJpdmF0ZSJ9LFsic3RhcnRzLXdpdGgiLCIkQ29udGVudC1UeXBlIiwiIl0sWyJjb250ZW50LWxlbmd0aC1yYW5nZSIsMCwxMDQ4NTc2MF1dfQ=="
-SIGNATURE_HASH = "foNqRicU/vySm8/qU82kGESiQhY="
+PERMISSION_HASH = "eyJleHBpcmF0aW9uIjoiMjAyMC0wMS0wMVQwMDowMDowMFoiLCJjb25kaXRpb25zIjpbeyJidWNrZXQiOiJtYXBpbGxhcnkudXBsb2Fkcy5pbWFnZXMifSxbInN0YXJ0cy13aXRoIiwiJGtleSIsIiJdLHsiYWNsIjoicHJpdmF0ZSJ9LFsic3RhcnRzLXdpdGgiLCIkQ29udGVudC1UeXBlIiwiIl0sWyJjb250ZW50LWxlbmd0aC1yYW5nZSIsMCwyMDQ4NTc2MF1dfQ=="
+SIGNATURE_HASH = "f6MHj3JdEq8xQ/CmxOOS7LvMxoI="
 BOUNDARY_CHARS = string.digits + string.ascii_letters
-NUMBER_THREADS = 4
-MAX_ATTEMPTS = 4
+NUMBER_THREADS = int(os.getenv('NUMBER_THREADS', '4'))
+MAX_ATTEMPTS = int(os.getenv('MAX_ATTEMPTS', '10'))
 UPLOAD_PARAMS = {"url": MAPILLARY_UPLOAD_URL, "permission": PERMISSION_HASH, "signature": SIGNATURE_HASH, "move_files":True}
-
 
 def encode_multipart(fields, files, boundary=None):
     """
@@ -131,8 +130,13 @@ def upload_file(filepath, url, permission, signature, key=None, move_files=True)
 
             except urllib2.HTTPError as e:
                 print("HTTP error: {0} on {1}".format(e, filename))
+                time.sleep(5)
             except urllib2.URLError as e:
                 print("URL error: {0} on {1}".format(e, filename))
+                time.sleep(5)
+            except OSError as e:
+                print("OS error: {0} on {1}".format(e, filename))
+                time.sleep(5)
             except socket.timeout as e:
                 # Specific timeout handling for Python 2.7
                 print("Timeout error: {0} (retrying)".format(filename))
@@ -166,10 +170,12 @@ def exif_has_mapillary_tags(filename):
 
 
 class UploadThread(threading.Thread):
-    def __init__(self, queue, params=UPLOAD_PARAMS):
+
+    def __init__(self, queue, params=UPLOAD_PARAMS, total_task = 0):
         threading.Thread.__init__(self)
         self.q = queue
         self.params = params
+        self.total_task = self.q.qsize()
 
     def run(self):
         while True:
@@ -179,6 +185,7 @@ class UploadThread(threading.Thread):
                 self.q.task_done()
                 break
             else:
+                print "Uploading: {0:.0f}%".format((self.total_task - self.q.qsize())*100/self.total_task)
                 upload_file(filepath, **self.params)
                 self.q.task_done()
 
@@ -188,6 +195,9 @@ if __name__ == '__main__':
     '''
     Use from command line as: python upload.py path
     '''
+
+    if sys.version_info >= (3, 0):
+        raise IOError("Incompatible Python version. This script requires Python 2.x, you are using {0}.".format(sys.version_info[:2]))
 
     if len(sys.argv) > 2:
         print("Usage: python upload.py path")
@@ -214,6 +224,7 @@ if __name__ == '__main__':
             q.put(filepath)
         else:
             print("Skipping: {0}".format(filepath))
+
 
     # create uploader threads
     uploaders = [UploadThread(q) for i in range(NUMBER_THREADS)]

@@ -16,24 +16,30 @@ import base64
 from upload import create_dirs, UploadThread, upload_file
 
 '''
-Script for uploading images taken with other cameras than
-the Mapillary iOS or Android apps.
+Script for reading the EXIF data from images and create the
+Mapillary tags in Image Description (including the upload hashes)
+needed to be able to upload without authentication.
 
-Intended use is for when you have used an action camera such as a GoPro
-or Garmin VIRB, or any other camera where the location is included in the image EXIF.
+This script will add all photos in the same folder to one sequence,
+so group your photos into one subfolder per sequence (works deeply nested, too).
+
+-root
+    |
+    |- seq1
+    |  |- seq1_1.jpg
+    |  |- seq1_2.jpg
+    |  |
+    |  |- seq2
+    |     |- seq2_1.jpg
+    |
+    |- seq3
+       |- seq3_1.jpg
 
 The following EXIF tags are required:
 -GPSLongitude
 -GPSLatitude
 -(GPSDateStamp and GPSTimeStamp) or DateTimeOriginal or DateTimeDigitized or DateTime
 -Orientation
-
-Before uploading put all images that belong together in a sequence, in a
-specific folder, for example using 'time_split.py'. All images in a session
-will be considered part of a single sequence.
-
-NB: DO NOT USE THIS SCRIPT ON IMAGE FILES FROM THE MAPILLARY APPS,
-USE UPLOAD.PY INSTEAD.
 
 (assumes Python 2.x, for Python 3.x you need to change some module names)
 '''
@@ -64,11 +70,10 @@ def create_mapillary_desc(filename, username, email, upload_hash, sequence_uuid)
     mapillary_infos = []
 
     print "Processing %s" % filename
-    with open(filename, 'r+') as f:
-        tags = pyexiv2.ImageMetadata(filepath)
-        tags.read()
-        # for tag in tags:
-        #     print "{0}  {1}".format(tag, tags[tag].value)
+    tags = pyexiv2.ImageMetadata(filename)
+    tags.read()
+    # for tag in tags:
+    #     print "{0}  {1}".format(tag, tags[tag].value)
 
     # make sure all required tags are there
     for rexif in required_exif:
@@ -105,12 +110,20 @@ def create_mapillary_desc(filename, username, email, upload_hash, sequence_uuid)
     mapillary_description['MAPSequenceUUID'] = str(sequence_uuid)
     mapillary_description['MAPDeviceModel'] = tags["Exif.Photo.LensModel"].value if "Exif.Photo.LensModel" in tags else "none"
     mapillary_description['MAPDeviceMake'] = tags["Exif.Photo.LensMake"].value if "Exif.Photo.LensMake" in tags else "none"
+    mapillary_description['MAPDeviceModel'] = tags["Exif.Image.Model"].value if (("Exif.Image.Model" in tags) and (mapillary_description['MAPDeviceModel'] == "none")) else "none"
+    mapillary_description['MAPDeviceMake'] = tags["Exif.Image.Make"].value if ( ("Exif.Image.Make" in tags) and (mapillary_description['MAPDeviceMake'] == "none")) else "none"
 
     json_desc = json.dumps(mapillary_description)
     print "tag: {0}".format(json_desc)
     tags['Exif.Image.ImageDescription'] = json_desc
     tags.write()
 
+
+def get_upload_token(mail, pwd):
+    params = urllib.urlencode({"email": mail, "password": pwd})
+    response = urllib.urlopen("https://api.mapillary.com/v1/u/login", params)
+    resp = json.loads(response.read())
+    return resp['upload_token']
 
 if __name__ == '__main__':
     '''
@@ -120,32 +133,27 @@ if __name__ == '__main__':
     try:
         MAPILLARY_USERNAME = os.environ['MAPILLARY_USERNAME']
         MAPILLARY_EMAIL = os.environ['MAPILLARY_EMAIL']
-        MAPILLARY_UPLOAD_TOKEN = os.environ['MAPILLARY_UPLOAD_TOKEN']
+        MAPILLARY_PASSWORD = os.environ['MAPILLARY_PASSWORD']
 
     except KeyError:
         print(
-        "You are missing one of the environment variables MAPILLARY_USERNAME, MAPILLARY_EMAIL or MAPILLARY_UPLOAD_TOKEN. These are required.")
+        "You are missing one of the environment variables MAPILLARY_USERNAME, MAPILLARY_EMAIL or MAPILLARY_PASSWORD. These are required.")
         sys.exit()
-    # log in, get the projects
-    # print resp
+
+    upload_token = get_upload_token(MAPILLARY_EMAIL, MAPILLARY_PASSWORD)
 
     args = sys.argv
-    print args
-    if len(args) < 2 or len(args) > 3:
-        print("Usage: python add_mapillary_tag_from_exif.py root_path [sequence_id]")
+    # print args
+    if len(args) != 2:
+        print("Usage: python add_mapillary_tag_from_exif.py root_path")
         raise IOError("Bad input parameters.")
     path = args[1]
 
-    if path.lower().endswith(".jpg"):
-        # single file
-        file_list = [path]
-    else:
-        # folder(s)
-        file_list = []
-
     for root, sub_folders, files in os.walk(path):
-        file_list += [os.path.join(root, filename) for filename in files if filename.lower().endswith(".jpg")]
-
-    for filepath in file_list:
-        sequence_uuid = args[2] if len(args) == 3 else uuid.uuid4()
-        create_mapillary_desc(filepath, MAPILLARY_USERNAME, MAPILLARY_EMAIL, MAPILLARY_UPLOAD_TOKEN, sequence_uuid)
+        sequence_uuid = uuid.uuid4()
+        print("Processing folder {0}, {1} files, sequence_id {2}.".format(root, len(files), sequence_uuid))
+        for file in files:
+            if file.lower().endswith(('jpg', 'jpeg', 'png', 'tif', 'tiff', 'pgm', 'pnm', 'gif')):
+                create_mapillary_desc(os.path.join(root,file), MAPILLARY_USERNAME, MAPILLARY_EMAIL, upload_token, sequence_uuid)
+            else:
+                print "Ignoring {0}".format(os.path.join(root,file))
