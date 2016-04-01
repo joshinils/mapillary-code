@@ -28,14 +28,21 @@ function sequencer {
 	for file in $MAPILLARY_DATA/*
 	do
 		echo sequencer: "$file"
-		$MAPILLARY_PATH/sequence_split.py $file 120 300
+		$MAPILLARY_PATH/sequence_split.py $file 180 400
 	done
 }
 
-function resize {
+function cropper {
 	for file in $(find $MAPILLARY_DATA -iname '*.jpg'); do 
 		echo resize to 16x9: "$file"
 		convert "$file" -gravity north -crop 100x75% +repage "$file"
+	done
+}
+
+function normalizer {
+	for file in $(find $MAPILLARY_DATA -iname '*.jpg'); do 
+		echo normalize: "$file"
+		convert "$file" -resize 2048x -normalize "$file"
 	done
 }
 
@@ -49,6 +56,7 @@ function upload {
 			if [ ! -d "$file/success" ]; then
 				echo "Upload now: $file ($num)"
 				yes | $MAPILLARY_PATH/upload_with_authentication.py $file
+				echo "Pausing..."; sleep 5s
 			else
 				echo "Already done: $file"
 			fi
@@ -60,8 +68,8 @@ function upload {
 #
 # main
 #
+#git clone https://github.com/mapillary/mapillary_tools.git
 dupes
 sequencer
-resize
+normalizer
 upload
- 

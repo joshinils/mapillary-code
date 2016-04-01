@@ -1,0 +1,24 @@
+{
+  "short_name": "MapRadar",
+  "name": "moenk's Radar for Mapillary",
+  "icons": [
+    {
+      "src": "https://openclipart.org/image/96px/svg_to_png/28620/iolco51-Radar-screen.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "https://openclipart.org/image/144px/svg_to_png/28620/iolco51-Radar-screen.png",
+      "sizes": "144x144",
+      "type": "image/png"
+    },
+    {
+      "src": "https://openclipart.org/image/192px/svg_to_png/28620/iolco51-Radar-screen.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "http://r.geo.hu-berlin.de/~moenkemt/mapillary/mapradar.html",
+  "display": "fullscreen",
+  "orientation": "portrait"
+}
