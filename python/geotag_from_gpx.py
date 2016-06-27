@@ -9,6 +9,7 @@ import math
 import time
 from pyexiv2.utils import make_fraction
 from dateutil.tz import tzlocal
+from lib.geo import interpolate_lat_lon, decimal_to_dms, utc_to_localtime
 
 '''
 Script for geotagging images using a gpx file from an external GPS.
@@ -27,10 +28,6 @@ Requires pyexiv2, see install instructions at http://tilloy.net/dev/pyexiv2/
 (or use your favorite installer, e.g. 'brew install pyexiv2').
 '''
 
-def utc_to_localtime(utc_time):
-    utc_offset_timedelta = datetime.datetime.utcnow() - datetime.datetime.now()
-    return utc_time - utc_offset_timedelta
-
 
 def get_lat_lon_time(gpx_file):
     '''
@@ -45,10 +42,14 @@ def get_lat_lon_time(gpx_file):
         gpx = gpxpy.parse(f)
 
     points = []
-    for track in gpx.tracks:
-        for segment in track.segments:
-            for point in segment.points:
-                points.append( (utc_to_localtime(point.time), point.latitude, point.longitude, point.elevation) )
+    if len(gpx.tracks)>0:
+        for track in gpx.tracks:
+            for segment in track.segments:
+                for point in segment.points:
+                    points.append( (utc_to_localtime(point.time), point.latitude, point.longitude, point.elevation) )
+    if len(gpx.waypoints) > 0:
+        for point in gpx.waypoints:
+            points.append( (utc_to_localtime(point.time), point.latitude, point.longitude, point.elevation) )
 
     # sort by time just in case
     points.sort()
@@ -56,110 +57,22 @@ def get_lat_lon_time(gpx_file):
     return points
 
 
-def compute_bearing(start_lat, start_lon, end_lat, end_lon):
-    '''
-    Get the compass bearing from start to end.
-
-    Formula from
-    http://www.movable-type.co.uk/scripts/latlong.html
-    '''
-    # make sure everything is in radians
-    start_lat = math.radians(start_lat)
-    start_lon = math.radians(start_lon)
-    end_lat = math.radians(end_lat)
-    end_lon = math.radians(end_lon)
-
-    dLong = end_lon - start_lon
-
-    dPhi = math.log(math.tan(end_lat/2.0+math.pi/4.0)/math.tan(start_lat/2.0+math.pi/4.0))
-    if abs(dLong) > math.pi:
-        if dLong > 0.0:
-            dLong = -(2.0 * math.pi - dLong)
-        else:
-            dLong = (2.0 * math.pi + dLong)
-
-    y = math.sin(dLong)*math.cos(end_lat)
-    x = math.cos(start_lat)*math.sin(end_lat) - math.sin(start_lat)*math.cos(end_lat)*math.cos(dLong)
-    bearing = (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
-
-    return bearing
-
-
-def interpolate_lat_lon(points, t):
-    '''
-    Return interpolated lat, lon and compass bearing for time t.
-
-    Points is a list of tuples (time, lat, lon, elevation), t a datetime object.
-    '''
-
-    # find the enclosing points in sorted list
-    if t<points[0][0]:
-        raise ValueError("Photo's timestamp is earlier than the earliest time in the GPX file.")
-    if t>=points[-1][0]:
-        raise ValueError("Photo's timestamp is later than the latest time in the GPX file.")
-
-    for i,point in enumerate(points):
-        if t<point[0]:
-            if i>0:
-                before = points[i-1]
-            else:
-                before = points[i]
-            after = points[i]
-            break
-
-    # time diff
-    dt_before = (t-before[0]).total_seconds()
-    dt_after = (after[0]-t).total_seconds()
-
-    # simple linear interpolation
-    lat = (before[1]*dt_after + after[1]*dt_before) / (dt_before + dt_after)
-    lon = (before[2]*dt_after + after[2]*dt_before) / (dt_before + dt_after)
-
-    bearing = compute_bearing(before[1], before[2], after[1], after[2])
-
-    if before[3] is not None:
-        ele = (before[3]*dt_after + after[3]*dt_before) / (dt_before + dt_after)
-    else:
-        ele = None
-
-    return lat, lon, bearing, ele
-
-
-def to_deg(value, loc):
-    '''
-    Convert decimal position to degrees.
-    '''
-    if value < 0:
-        loc_value = loc[0]
-    elif value > 0:
-        loc_value = loc[1]
-    else:
-        loc_value = ""
-    abs_value = abs(value)
-    deg =  int(abs_value)
-    t1 = (abs_value-deg)*60
-    mint = int(t1)
-    sec = round((t1 - mint)* 60, 6)
-    return (deg, mint, sec, loc_value)
-
-
-def add_exif_using_timestamp(filename, points, offset_time=0):
+def add_exif_using_timestamp(filename, time, points, offset_time=0):
     '''
     Find lat, lon and bearing of filename and write to EXIF.
     '''
 
     metadata = pyexiv2.ImageMetadata(filename)
     metadata.read()
-    t = metadata['Exif.Photo.DateTimeOriginal'].value
 
     # subtract offset in s beween gpx time and exif time
-    t = t - datetime.timedelta(seconds=offset_time)
+    t = time - datetime.timedelta(seconds=offset_time)
 
     try:
         lat, lon, bearing, elevation = interpolate_lat_lon(points, t)
 
-        lat_deg = to_deg(lat, ["S", "N"])
-        lon_deg = to_deg(lon, ["W", "E"])
+        lat_deg = decimal_to_dms(lat, ["S", "N"])
+        lon_deg = decimal_to_dms(lon, ["W", "E"])
 
         # convert decimal coordinates into degrees, minutes and seconds as fractions for EXIF
         exiv_lat = (make_fraction(lat_deg[0],1), make_fraction(int(lat_deg[1]),1), make_fraction(int(lat_deg[2]*1000000),1000000))
@@ -185,9 +98,49 @@ def add_exif_using_timestamp(filename, points, offset_time=0):
             metadata["Exif.GPSInfo.GPSAltitudeRef"] = '0' if elevation >= 0 else '1'
 
         metadata.write()
-        print("Added geodata to: {0} ({1}, {2}, {3}), altitude {4}".format(filename, lat, lon, bearing, elevation))
+        print("Added geodata to: {}  time {}  lat {}  lon {}  alt {}  bearing {}".format(filename, time, lat, lon, elevation, bearing))
     except ValueError, e:
         print("Skipping {0}: {1}".format(filename, e))
+
+
+def exif_time(filename):
+    '''
+    Get image capture time from exif
+    '''
+    m = pyexiv2.ImageMetadata(filename)
+    m.read()
+    return m['Exif.Photo.DateTimeOriginal'].value
+
+
+def estimate_sub_second_time(files, interval):
+    '''
+    Estimate the capture time of a sequence with sub-second precision
+
+    EXIF times are only given up to a second of precission. This function
+    uses the given interval between shots to Estimate the time inside that
+    second that each picture was taken.
+    '''
+    if interval <= 0.0:
+        return [exif_time(f) for f in files]
+
+    onesecond = datetime.timedelta(seconds=1.0)
+    T = datetime.timedelta(seconds=interval)
+    for i, f in enumerate(files):
+        m = exif_time(f)
+        if i == 0:
+            smin = m
+            smax = m + onesecond
+        else:
+            m0 = m - T * i
+            smin = max(smin, m0)
+            smax = min(smax, m0 + onesecond)
+
+    if smin > smax:
+        print('Interval not compatible with EXIF times')
+        return None
+    else:
+        s = smin + (smax - smin) / 2
+        return [s + T * i for i in range(len(files))]
 
 
 def get_args():
@@ -195,9 +148,12 @@ def get_args():
     p = argparse.ArgumentParser(description='Geotag one or more photos with location and orientation from GPX file.')
     p.add_argument('path', help='Path containing JPG files, or location of one JPG file.')
     p.add_argument('gpx_file', help='Location of GPX file to get locations from.')
-    p.add_argument('time_offset',
+    p.add_argument('--time-offset',
         help='Time offset between GPX and photos. If your camera is ahead by one minute, time_offset is 60.',
-        default=0, type=float, nargs='?') # nargs='?' is how you make the last positional argument optional.
+        default=0, type=float)
+    p.add_argument('--interval',
+        help='Time between shots. Used to set images times with sub-second precission',
+        type=float, default=0.0)
     return p.parse_args()
 
 
@@ -217,14 +173,19 @@ if __name__ == '__main__':
             file_list += [os.path.join(root, filename) for filename in files if filename.lower().endswith(".jpg")]
 
     # start time
-    t = time.time()
+    start_time = time.time()
+
+    # Estimate capture time with sub-second precision
+    sub_second_times = estimate_sub_second_time(file_list, args.interval)
+    if not sub_second_times:
+        sys.exit(1)
 
     # read gpx file to get track locations
     gpx = get_lat_lon_time(args.gpx_file)
 
     print("===\nStarting geotagging of {0} images using {1}.\n===".format(len(file_list), args.gpx_file))
 
-    for filepath in file_list:
-        add_exif_using_timestamp(filepath, gpx, args.time_offset)
+    for filepath, filetime in zip(file_list, sub_second_times):
+        add_exif_using_timestamp(filepath, filetime, gpx, args.time_offset)
 
-    print("Done geotagging {0} images in {1:.1f} seconds.".format(len(file_list), time.time()-t))
+    print("Done geotagging {0} images in {1:.1f} seconds.".format(len(file_list), time.time()-start_time))
