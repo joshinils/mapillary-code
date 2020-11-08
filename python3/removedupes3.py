@@ -1,9 +1,8 @@
 import getopt
 import os
 import sys
+from tqdm import tqdm
 from math import asin, cos, radians, sin, sqrt
-
-from PIL import Image
 from exifpil3 import PILExifReader
 
 
@@ -25,20 +24,21 @@ class GPSDirectionDuplicateFinder:
             self._prev_unique_rotation = self._prev_rotation
 
     def is_duplicate(self, file_path, exif_reader):
-        rotation = exif_reader.get_rotation()
-
-        if rotation is None:
-            return None
-
-        if self._prev_unique_rotation is None:
-            self._prev_rotation = rotation
-            return False
-
-        diff = abs(rotation - self._prev_unique_rotation)
-        is_duplicate = diff < self._max_diff
-
-        self._prev_rotation = rotation
-        self._latest_text = str(int(diff)) + " deg: " + str(is_duplicate)
+        # rotation = exif_reader.get_rotation()
+        #
+        # if rotation is None:
+        #     return None
+        #
+        # if self._prev_unique_rotation is None:
+        #     self._prev_rotation = rotation
+        #     return False
+        #
+        # diff = abs(rotation - self._prev_unique_rotation)
+        # is_duplicate = diff < self._max_diff
+        #
+        # self._prev_rotation = rotation
+        # self._latest_text = str(int(diff)) + " deg: " + str(is_duplicate)
+        is_duplicate = None
         return is_duplicate
 
 
@@ -252,13 +252,19 @@ class ImageRemover:
 
     def do_magic(self):
         """Perform the task of finding and moving images."""
-        files = [os.path.join(self._src_dir, f) for f in os.listdir(self._src_dir)
-                 if os.path.isfile(os.path.join(self._src_dir, f)) and
-                 f.lower().endswith('.jpg')]
+        #files = [os.path.join(self._src_dir, f) for f in os.listdir(self._src_dir)
+        #         if os.path.isfile(os.path.join(self._src_dir, f)) and
+        #         f.lower().endswith('.jpg')]
+        files = []
+        for subdirz, dirz, filez in os.walk(self._src_dir):
+            for f in filez:
+                file_path = subdirz + os.sep + f
+                if file_path.lower().endswith('.jpg'):
+                    # print(file_path)
+                    files.append(file_path)
 
         capturetime, files = self._sort_file_list(files)
-
-        for file_path in files:
+        for file_path in tqdm(files):
             exif_reader = PILExifReader(file_path)
             is_error = self._handle_possible_erro(file_path, exif_reader)
             if not is_error:
@@ -376,8 +382,8 @@ if __name__ == "__main__":
             pan = float(value)
         elif switch in ("-n", "--dry-run"):
             dryrun = True
-        elif switch in ("-v", "--verbose"):
-            verbose += 1
+        # elif switch in ("-v", "--verbose"):
+        #     verbose += 1
         elif switch in ("-e", "--error-dir"):
             error_dir = value
         elif switch in ("-m", "--min-dup"):
@@ -387,15 +393,22 @@ if __name__ == "__main__":
         elif switch in ("-t", "--too-fast"):
             too_fast_km_h = float(value)
 
-    if len(args) == 1 and args[0] != ".":
-        duplicate_dir = "duplicates"
-    elif len(args) < 2:
-        print_help()
-        sys.exit(2)
-    else:
-        duplicate_dir = args[1]
+    # if len(args) == 1 and args[0] != ".":
+    #     duplicate_dir = "duplicates"
+    # elif len(args) < 2:
+    #     print_help()
+    #     sys.exit(2)
+    # else:
+    #     duplicate_dir = args[1]
 
-    src_dir = args[0]
+    print("+** Dupe remover ***")
+    try:
+        src_dir = sys.argv[1]
+    except:
+        src_dir = "d:\\mapillary\\dcim\\"
+        pass
+    duplicate_dir = src_dir + "duplicates\\"
+    error_dir = src_dir + "errors\\"
 
     distance_finder = GPSDistanceDuplicateFinder(distance)
     direction_finder = GPSDirectionDuplicateFinder(pan)

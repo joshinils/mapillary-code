@@ -1,5 +1,5 @@
 import datetime
-import struct  # Only to catch struct.error due to error in PIL / Pillow.
+# import struct  # Only to catch struct.error due to error in PIL / Pillow.
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 
@@ -35,12 +35,12 @@ class PILExifReader:
                 return None
             else:
                 raise e
-        except struct.error as e:
-            if e.message == "unpack requires a string argument of length 2":
-                # Error in PIL when exif data is corrupt.
-                return None
-            else:
-                raise e
+        # except struct.error as e:
+        #     if e.message == "unpack requires a string argument of length 2":
+        #         # Error in PIL when exif data is corrupt.
+        #         return None
+        #     else:
+        #         raise e
         if info:
             for tag, value in list(info.items()):
                 decoded = TAGS.get(tag, tag)
@@ -80,17 +80,20 @@ class PILExifReader:
     def _convert_to_degress(self, value):
         """Helper function to convert the GPS coordinates stored in
         the EXIF to degrees in float format."""
-        d0 = value[0][0]
-        d1 = value[0][1]
-        d = float(d0) / float(d1)
+        d = value[0]
+        # d0 = value[0][0]
+        # d1 = value[0][1]
+        # d = float(d0) / float(d1)
 
-        m0 = value[1][0]
-        m1 = value[1][1]
-        m = float(m0) / float(m1)
+        m = value[1]
+        # m0 = value[1][0]
+        # m1 = value[1][1]
+        # m = float(m0) / float(m1)
 
-        s0 = value[2][0]
-        s1 = value[2][1]
-        s = float(s0) / float(s1)
+        s = value[2]
+        # s0 = value[2][0]
+        # s1 = value[2][1]
+        # s = float(s0) / float(s1)
 
         return d + (m / 60.0) + (s / 3600.0)
 
@@ -111,6 +114,7 @@ class PILExifReader:
 
         if (gps_latitude and gps_latitude_ref
             and gps_longitude and gps_longitude_ref):
+
             lat = self._convert_to_degress(gps_latitude)
             if gps_latitude_ref != "N":
                 lat = 0 - lat
@@ -125,7 +129,7 @@ class PILExifReader:
             return None
 
     def calc_tuple(self, tup):
-        if tup is None or len(tup) != 2 or tup[1] == 0:
+        if tup is None:
             return None
         return int(tup[0]) / int(tup[1])
 
@@ -143,7 +147,8 @@ class PILExifReader:
 
         for tag in ('GPSImgDirection', 'GPSTrack'):
             gps_direction = self._get_if_exist(gps_info, tag)
-            direction = self.calc_tuple(gps_direction)
+            # direction = self.calc_tuple(gps_direction)
+            direction = gps_direction
             if direction == None:
                 continue
             else:
@@ -161,7 +166,9 @@ class PILExifReader:
         speed_frac = gps_info["GPSSpeed"]
         speed_ref = gps_info["GPSSpeedRef"]
 
-        speed = self.calc_tuple(speed_frac)
+        # speed = self.calc_tuple(speed_frac)
+        speed = speed_frac
+
         if speed is None or speed_ref is None:
             return None
 
