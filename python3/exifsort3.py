@@ -13,10 +13,12 @@
 import os
 import math
 import exifread
+from tqdm import tqdm
 
-source_path="D:\\Mapillary\\DCIM\\"
-target_path="D:\\Mapillary\\DCIM\\"
-zoom_level=12
+
+source_path = "D:\\Mapillary\\DCIM\\"
+target_path = "D:\\Mapillary\\DCIM\\"
+zoom_level = 12
 
 
 # coovert to decimal degrees
@@ -70,15 +72,16 @@ def create_and_move_to_target(file_path,zoom_level):
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
         target_file=target_dir + os.path.basename(os.path.dirname(file_path)) + "_" + os.path.basename(file_path)
-        print (target_file)
+        # print (target_file)
         os.rename(file_path,target_file)
 
 
 
 # main
-for subdir, dirs, files in os.walk(source_path):
-    for file in files:
+print("*** EXIF-GPS to OSM tile mover ***")
+for subdir, dirz, filez in os.walk(source_path):
+    for file in tqdm(filez):
         file_path = subdir + os.sep + file
-        if ".jpg" in file_path.lower() and not "OSM_" in file_path:
+        if (".jpg" in file_path.lower()) and not ("OSM_" in file_path):
             create_and_move_to_target(file_path,zoom_level)
 

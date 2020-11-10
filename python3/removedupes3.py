@@ -235,7 +235,7 @@ class ImageRemover:
         filename = os.path.basename(file)
         if not self._dryrun:
             os.rename(file, os.path.join(dir, filename))
-        print(file, " => ", dir)
+        # print(file, " => ", dir)
 
     def _read_capture_time(self, filepath):
         reader = PILExifReader(filepath)
@@ -401,7 +401,7 @@ if __name__ == "__main__":
     # else:
     #     duplicate_dir = args[1]
 
-    print("+** Dupe remover ***")
+    print("*** Dupe remover ***")
     try:
         src_dir = sys.argv[1]
     except:
