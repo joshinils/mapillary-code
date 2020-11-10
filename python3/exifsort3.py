@@ -80,6 +80,7 @@ def create_and_move_to_target(file_path,zoom_level):
 # main
 print("*** EXIF-GPS to OSM tile mover ***")
 for subdir, dirz, filez in os.walk(source_path):
+    print("\nSorting:", subdir)
     for file in tqdm(filez):
         file_path = subdir + os.sep + file
         if (".jpg" in file_path.lower()) and not ("OSM_" in file_path):
