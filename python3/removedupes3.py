@@ -302,7 +302,7 @@ class ImageRemover:
 
 
 if __name__ == "__main__":
-    distance = 4
+    distance = 3
     pan = 20
     error_dir = "errors"
     fast_km_h = 150

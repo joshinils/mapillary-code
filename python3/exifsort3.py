@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 source_path = "D:\\Mapillary\\DCIM\\"
 target_path = "D:\\Mapillary\\DCIM\\"
-zoom_level = 12
+zoom_level = 14
 
 
 # coovert to decimal degrees
