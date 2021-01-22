@@ -2,7 +2,7 @@ from oauthlib.oauth2 import MobileApplicationClient
 from requests_oauthlib import OAuth2Session
 
 
-client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzo3YTgzZDA4YmUxMWY5NTFh'
+client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
 token_url = "https://a.mapillary.com/v2/oauth/token"
 redirect_uri = "https://geoclub.de/mapillary/oauth2.php"
 auth_url = "https://www.mapillary.com/connect"
