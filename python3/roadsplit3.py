@@ -1,24 +1,19 @@
 #
-#   file: exifsort3.py
+#   file: roadsplit3.py
 #
 #   coder: geomoenk@googlemail.com
 #
 #   purpose: sorts all JPG files with EXIF headers from a directory
-#           to new directories according to the OpenStreetMap tiles
-#           schema with a given zoom level before uploading.
-#           this makes it easier to find pictures from a given area
-#           after capturing a big load pictures on a trip.
+#           to new directories according to the street name in the
+#           OSM planet file in a PostGIS database (WGS84 lat/lon).
+#           this gives one sequence per street in Mapillary upload.
 #
 
 import os
-import math
+import psycopg2
+import slugify
 import exifread
-from tqdm import tqdm
-
-
-source_path = "D:\\Mapillary\\DCIM\\"
-target_path = "D:\\Mapillary\\DCIM\\"
-zoom_level = 14
+import tqdm
 
 
 # coovert to decimal degrees
@@ -55,35 +50,41 @@ def getGPS(filepath):
         return lat_value, lon_value, lat_text, lon_text, str(datetime_text)
 
 
-# make a directory name accoding to OSM tile in given zoom level
-def get_tile_directory_name(lat, lon, zoom):
-    lat_rad = math.radians(lat)
-    n = 2.0 ** zoom
-    xtile = int((lon + 180.0) / 360.0 * n)
-    ytile = int((1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
-    tile = r"OSM_{0}_{1}_{2}"
-    return tile.format(zoom, xtile, ytile)
-
-
 # get coords from file, create target dir and move file to it
-def create_and_move_to_target(file_path,zoom_level):
-    gps = getGPS(file_path)
-    if gps!={}:
-        target_dir = target_path + get_tile_directory_name(gps[0], gps[1], zoom_level) + os.sep
+def create_and_move_to_target(filepath):
+    gps = getGPS(filepath)
+    if gps != {}:
+        lat = gps[0]
+        lon = gps[1]
+        sql = """
+        SELECT a.name, ST_Distance(CAST(ST_SetSRID( ST_Point( """ + str(lon) + """, """ + str(lat) + """), 4326) AS geography), a.way) as d
+        from planet_osm_line as a 
+        where a.name != '' and a.highway != ''
+        order by d asc
+        limit 1;
+        """
+        cur = conn.cursor()
+        cur.execute(sql)
+        row = cur.fetchone()
+        row = "OSM_" + slugify.slugify(row[0])
+        # print(row)
+        target_dir = target_path + row + os.sep
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
-        target_file=target_dir + os.path.basename(os.path.dirname(file_path)) + "_" + os.path.basename(file_path)
+        target_file=target_dir + os.path.basename(os.path.dirname(filepath)) + "_" + os.path.basename(filepath)
         # print (target_file)
-        os.rename(file_path,target_file)
-
+        os.rename(filepath,target_file)
 
 
 # main
-print("*** EXIF-GPS to OSM tile mover ***")
+source_path = "D:\\Mapillary\\DCIM\\"
+target_path = "D:\\Mapillary\\DCIM\\"
+conn = psycopg2.connect("dbname='gis' user='postgres' host='localhost' password='pgadmin'")
+print("*** EXIF-GPS to OSM-street-name sorter started")
 for subdir, dirz, filez in os.walk(source_path):
     print("\nSorting:", subdir)
-    for file in tqdm(filez):
+    for file in tqdm.tqdm(filez):
         file_path = subdir + os.sep + file
         if (".jpg" in file_path.lower()) and not ("OSM_" in file_path):
-            create_and_move_to_target(file_path,zoom_level)
+            create_and_move_to_target(file_path)
 
