@@ -93,13 +93,14 @@ if not(os.path.isdir(ordnerpfad)):
     print("No valid directory given for upload as parameter.")
     exit(1)
 for subdirz, dirz, filez in os.walk(ordnerpfad):
-    print("\n*** Upload directory:", subdirz)
-    session = create_session(subdirz)
-    for f in tqdm(filez):
-        filepath = subdirz + os.sep + f
-        if filepath.lower().endswith('.jpg'):
-            # print(filepath)
-            add_mapillary_tags(filepath)
-            upload_imagery(session, filepath)
-    publish_session(session)
+    if len(filez) > 0:
+        print("\n*** Upload directory:", subdirz)
+        session = create_session(subdirz)
+        for f in tqdm(filez):
+            filepath = subdirz + os.sep + f
+            if filepath.lower().endswith('.jpg'):
+                # print(filepath)
+                add_mapillary_tags(filepath)
+                upload_imagery(session, filepath)
+        publish_session(session)
 
