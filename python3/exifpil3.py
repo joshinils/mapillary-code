@@ -7,6 +7,7 @@ from PIL.ExifTags import TAGS, GPSTAGS
 # License:   MIT
 # Credits:   https://gist.github.com/erans
 
+import ast
 
 class ExifException(Exception):
     def __init__(self, message):
@@ -62,6 +63,11 @@ class PILExifReader:
             print("Exif is none.")
         if time_tag in self._exif:
             capture_time = self._exif[time_tag]
+            capture_time = capture_time.replace(" ","_")
+            capture_time = capture_time.replace(":","_")
+        elif "ImageDescription" in self._exif:
+            dict =  ast.literal_eval(self._exif["ImageDescription"])
+            capture_time = dict["MAPCaptureTime"][0:19]
             capture_time = capture_time.replace(" ","_")
             capture_time = capture_time.replace(":","_")
         else:
