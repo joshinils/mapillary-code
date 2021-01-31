@@ -1,4 +1,3 @@
-import getopt
 import os
 import sys
 from tqdm import tqdm
@@ -294,151 +293,19 @@ class ImageRemover:
 if __name__ == "__main__":
     distance = 3
     pan = 20
-    error_dir = "errors"
     fast_km_h = 150
     too_fast_km_h = 200
     min_duplicates = 3
-
-    def print_help():
-        print("""Usage: remove-duplicates.py [-h | -d] src_dir duplicate_dir
-    Finds images in src_dir and moves duplicates to duplicate_dir.
-
-    Both src_dir and duplicate_dir are mandatory. If src_dir is not .
-    and duplicate_dir is not given, it will be named "duplicate" and put
-    in the current directory.
-    If duplicate_dir does not exist, it will be created in the current
-    directory (no matter if it will be used or not).
-
-    In order to be considered a duplicate, the image must match ALL criteria
-    to be a duplicate. With default settings that is, it must have travelled
-    less than """ + str(distance) + """  meters and be panned less than """ \
-        "" + str(pan) + """ degrees.
-    This supports that you ride straight ahead with a significant speed,
-    that you make panoramas standing still and standing still waiting for
-    the red light to change into green.
-
-    Important: The upload.py from Mapillary uploads *recursively* so do not
-    put the duplicate_dir under the dir your are uploading from!
-
-    Options:
-    -e --error-dir Give the directory to put pictures into, if they
-                   contains obvious errors.
-                   Default value is""" + error_dir + """
-    -h --help      Print this message and exit.
-    -d --distance  Give the maximum distance in meters images must be taken
-                   not to be considered duplicates. Default is """ \
-        "" + str(distance) + """ meters.
-                   The distance is calculated from embedded GPS data. If there
-                   is no GPS data the images are ignored.
-    -a --fast      The speed (km/h) which is a bit too fast.
-                   E.g. 40 for a bicycle.
-                   Default value is: """ + str(fast_km_h) + """ km/h
-    -t --too-fast  The speed (km/h) which is way too fast.
-                   E.g. 70 for a bicycle.
-                   Default value is: """ + str(too_fast_km_h) + """ km/h
-    -p --pan       The maximum distance in degrees (0-360) the image must be
-                   panned in order not to be considered a duplicate.
-                   Default is""" + str(pan) + """ degrees.
-    -m --min-dup   Minimum duplicates for a duplicate to be removed.
-                   Default is """  + str(min_duplicates), """.
-                   When larger than 0 the duplicate feature is only used to
-                   remove images due to larger stops, like a red traffic
-                   light. If going really slow this will also cause moving
-                   images.
-                   When 0 individual images are also moved, when the speed
-                   is slow, images will be moved giving a more consistent
-                   expirience when viewing them one by one.
-    -n --dry-run   Do not move any files. Just simulate.
-    -v --verbose   Print extra info.
-    """)
-
     dryrun = False
     verbose = 0
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hd:p:nve:m:a:t:",
-                                   ["help", "distance=", "pan=", "dry-run",
-                                    "verbose", "error-dir", "min-dup",
-                                    "fast=", "too-fast="])
-    except getopt.GetoptError as err:
-        print(str(err))
-        sys.exit(2)
-    for switch, value in opts:
-        if switch in ("-h", "--help"):
-            print_help()
-            sys.exit(0)
-        elif switch in ("-d", "--distance"):
-            distance = float(value)
-        elif switch in ("-p", "--pan"):
-            pan = float(value)
-        elif switch in ("-n", "--dry-run"):
-            dryrun = True
-        # elif switch in ("-v", "--verbose"):
-        #     verbose += 1
-        elif switch in ("-e", "--error-dir"):
-            error_dir = value
-        elif switch in ("-m", "--min-dup"):
-            min_duplicates = int(value)
-        elif switch in ("-a", "--fast"):
-            fast_km_h = float(value)
-        elif switch in ("-t", "--too-fast"):
-            too_fast_km_h = float(value)
-
-    # if len(args) == 1 and args[0] != ".":
-    #     duplicate_dir = "duplicates"
-    # elif len(args) < 2:
-    #     print_help()
-    #     sys.exit(2)
-    # else:
-    #     duplicate_dir = args[1]
-
     print("*** Dupe remover ***")
-    try:
-        src_dir = sys.argv[1]
-    except:
-        src_dir = "d:\\mapillary\\dcim\\"
-        pass
-    duplicate_dir = src_dir + "duplicates\\"
-    error_dir = src_dir + "errors\\"
-
+    src_dir = sys.argv[1]
+    if not(os.path.isdir(src_dir)):
+        print("No valid directory given as parameter.")
+        exit(1)
+    duplicate_dir = src_dir + "\\duplicates\\"
+    error_dir = src_dir + "\\errors\\"
     distance_finder = GPSDistanceDuplicateFinder(distance)
-    direction_finder = GPSDirectionDuplicateFinder(pan)
-    speed_error_finder = GPSSpeedErrorFinder(fast_km_h, too_fast_km_h)
-
     image_remover = ImageRemover(src_dir, duplicate_dir, error_dir)
-    image_remover.set_dry_run(dryrun)
-    image_remover.set_verbose(verbose)
-
-    # Modular: Multiple testers can be added.
     image_remover.add_duplicate_finder(distance_finder)
-    image_remover.add_duplicate_finder(direction_finder)
-    image_remover.add_error_finder(speed_error_finder)
-
-    try:
-        image_remover.do_magic()
-    except KeyboardInterrupt:
-        print("You cancelled.")
-        sys.exit(1)
-    finally:
-        show_split = False
-        if speed_error_finder.is_fast():
-            show_split = True
-            print()
-            print(("It looks like you have gone really fast between"
-                +" some images."))
-            print("Strongly consider splitting them into multiple series.")
-            print("See the messages earlier.")
-        if speed_error_finder.is_too_fast():
-            show_split = True
-            print()
-            print(("It looks like yo have gone unrealistically fast"
-                 + "between some images to be ok."))
-            print(("Mabye your GPS started out with a wrong location "
-                 + "or you traveled between sets?"))
-            print("See the messages earlier.")
-        if show_split:
-            print()
-            print(("See http://blog.mapillary.com/update/2014/06/16/actioncam-workflow.html"
-                + " on how"))
-            print(("to use time_split.py to automatically split a lot "
-                + "of images into multiple series."))
-				
+    image_remover.do_magic()

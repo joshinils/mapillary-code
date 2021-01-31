@@ -33,6 +33,9 @@ def add_mapillary_tags(filepath):
 if __name__ == "__main__":
     print ("*** Add Mapillary EXIF ImageDescription ***")
     ordnerpfad = sys.argv[1]
+    if not(os.path.isdir(ordnerpfad)):
+        print("No valid directory given as parameter.")
+        exit(1)
     # Loop over JPG files
     for subdirz, dirz, filez in os.walk(ordnerpfad):
         if len(filez) > 0:

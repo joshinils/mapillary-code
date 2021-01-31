@@ -1,12 +1,10 @@
 import os
-import sys
 import json
 import requests
 import argparse
 import time
-from tqdm import tqdm
 import pprint
-from addmaptags3 import add_mapillary_tags
+from tqdm import tqdm
 
 
 def upload_imagery(session, filepath):
@@ -72,13 +70,11 @@ if __name__ == "__main__":
                                      formatter_class = argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d', '--images_path', type = str, default = r"D:\Mapillary\DCIM", help = 'path to images')
     parser.add_argument('-n', '--dry_run', help = 'dry run, do not actually upload imagery', action = "store_true")
-    parser.add_argument('-m', '--no_mapillary_tags', help = 'dry run, do not actually upload imagery', action = "store_false")
     args = parser.parse_args()
     images_path = args.images_path
     dry_run = args.dry_run
     if dry_run:
         print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
-    no_mapillary_tags = args.no_mapillary_tags
 
 
     client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
@@ -113,8 +109,6 @@ if __name__ == "__main__":
                 session = create_session(path)
             for image_name in image_files(files):
                 filepath = path + os.sep + image_name
-                if not no_mapillary_tags:
-                    add_mapillary_tags(filepath)
                 if not dry_run:
                     upload_imagery(session, filepath)
                 else:

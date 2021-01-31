@@ -734,11 +734,10 @@ def interpolate_lat_lon(points, t):
 
 if __name__ == '__main__':
     print("*** Sequence splitter ***")
-    try:
-        path = sys.argv[1]
-    except:
-        path = r"D:\Mapillary\DCIM"
-        pass
+    path = sys.argv[1]
+    if not(os.path.isdir(path)):
+        print("No valid directory given as parameter.")
+        exit(1)
     s = Sequence(path)
     groups = s.split(cutoff_distance=cutoff_distance, cutoff_time=cutoff_time)
 
