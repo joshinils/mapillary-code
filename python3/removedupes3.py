@@ -44,24 +44,20 @@ class GPSDirectionDuplicateFinder:
 
 class GPSDistance:
     """Calculates the distance between two sets of GPS coordinates."""
-
     @staticmethod
     def get_gps_distance(lat1, lon1, lat2, lon2):
         """
     Calculate the great circle distance between two points
     on the earth (specified in decimal degrees with a result in meters).
-
     This is done using the Haversine Formula.
     """
         # Convert decimal degrees to radians
         lat1, lon1, lat2, lon2 = list(map(radians, [lat1, lon1, lat2, lon2]))
-
         # Haversine formula
         difflat = lat2 - lat1
         difflon = lon2 - lon1
-        a = (sin(difflat / 2) ** 2) + (cos(lat1) * cos(lat2) * sin(difflon / 2)
-                                       ** 2)
-        difflon = lon2 - lon1
+        a = (sin(difflat / 2) ** 2) + (cos(lat1) * cos(lat2) * sin(difflon / 2) ** 2)
+        # difflon = lon2 - lon1
         c = 2 * asin(sqrt(a))
         r = 6371000  # Radius of The Earth in meters.
         # It is not a perfect sphere, so this is just good enough.
@@ -72,7 +68,6 @@ class GPSSpeedErrorFinder:
     """Finds images in a sequence that might have an error in GPS data
      or suggest a track to be split. It is done by looking at the
      speed it would take to travel the distance in question."""
-
     def __init__(self, max_speed_km_h, way_too_high_speed_km_h):
         self._prev_lat_lon = None
         self._previous = None
@@ -110,31 +105,25 @@ class GPSSpeedErrorFinder:
                 % speed_gps )
             self._high_speed = True
             return True
-
         latlong = exif_reader.get_lat_lon()
         timestamp = exif_reader.get_time()
-
         if self._prev_lat_lon is None or self._prev_time is None:
             self._prev_lat_lon = latlong
             self._prev_time = timestamp
             self._previous_filepath = file_path
             return False
-
         if latlong is None or timestamp is None:
             return False
         diff_meters = GPSDistance.get_gps_distance(
             self._prev_lat_lon[0], self._prev_lat_lon[1], latlong[0],
             latlong[1])
         diff_secs = (timestamp - self._prev_time).total_seconds()
-
         if diff_secs == 0:
             return False
         speed_km_h = (diff_meters / diff_secs) * 3.6
-
         if speed_km_h > self._way_too_high_speed_km_h:
             self._latest_text = ("Speed between %s and %s is %s km/h, which is"
-            " unrealistically high." % (self._previous_filepath, file_path,
-                                          int(speed_km_h)))
+            " unrealistically high." % (self._previous_filepath, file_path, int(speed_km_h)))
             self._too_high_speed = True
             return True
         elif speed_km_h > self._max_speed_km_h:
@@ -257,13 +246,14 @@ class ImageRemover:
         #         f.lower().endswith('.jpg')]
         files = []
         for subdirz, dirz, filez in os.walk(self._src_dir):
-            for f in filez:
+            print("Search files:", subdirz)
+            for f in tqdm(filez):
                 file_path = subdirz + os.sep + f
                 if file_path.lower().endswith('.jpg'):
                     # print(file_path)
                     files.append(file_path)
-
         capturetime, files = self._sort_file_list(files)
+        print("Check", len(files), "files.")
         for file_path in tqdm(files):
             exif_reader = PILExifReader(file_path)
             is_error = self._handle_possible_erro(file_path, exif_reader)

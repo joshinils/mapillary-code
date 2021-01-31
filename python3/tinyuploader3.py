@@ -2,12 +2,11 @@ import os
 import sys
 import json
 import requests
-import piexif
 import argparse
 import time
 from tqdm import tqdm
 import pprint
-from exifpil3 import PILExifReader
+from addmaptags3 import add_mapillary_tags
 
 
 def upload_imagery(session, filepath):
@@ -59,24 +58,6 @@ def delete_session():
         r = requests.delete("https://a.mapillary.com/v3/uploads/" + session['key'] + "?client_id=" + client_id, headers=headers)
         r.raise_for_status()
 
-
-def add_mapillary_tags(filepath):
-    reader = PILExifReader(filepath)
-    datetime = reader.read_capture_time()
-    str_timestamp = datetime.strftime("%Y_%m_%d_%H_%M_%S_%f")[:-3]
-    lat, lon = reader.get_lat_lon()
-    payload_dict = {
-      "MAPLongitude": lon,
-      "MAPLatitude": lat,
-      "MAPCaptureTime": str_timestamp
-    }
-    payload_json = json.dumps(payload_dict)
-    # print(payload_json)
-    exif_dict = piexif.load(filepath)
-    exif_dict['0th'][piexif.ImageIFD.ImageDescription] = payload_json.encode('utf-8')
-    exif_bytes = piexif.dump(exif_dict)
-    piexif.insert(exif_bytes, filepath)
-    # pprint(exif_dict)
 
 def image_files(files):
     return [f for f in files if    f.lower().endswith('.jpg')

@@ -23,7 +23,7 @@ import tqdm
 
 
 cutoff_time = 60
-cutoff_distance = 300
+cutoff_distance = 161
 MAXIMUM_SEQUENCE_LENGTH = 500
 
 
