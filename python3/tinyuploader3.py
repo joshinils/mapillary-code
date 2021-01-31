@@ -6,7 +6,7 @@ import piexif
 import argparse
 import time
 from tqdm import tqdm
-from pprint import pprint
+import pprint
 from exifpil3 import PILExifReader
 
 
@@ -30,7 +30,7 @@ def create_session(subdir):
     r = requests.post('https://a.mapillary.com/v3/me/uploads?client_id=' + client_id, data=json.dumps(data), headers=headers)
     session = r.json()
     # pprint(session)
-    print("Session open:", session['key'])
+    tqdm.write("Session open: " + session['key'])
     f = open(subdir + os.sep + "session.json", "w")
     f.write(json.dumps(session, sort_keys=True, indent=4))
     f.close()
@@ -43,8 +43,8 @@ def publish_session(session):
         "Authorization": "Bearer " + access_token
     }
     r = requests.put("https://a.mapillary.com/v3/me/uploads/" +key + "/closed?client_id=" + client_id, headers=headers)
-    print("*** Session published:", session['key'])
-    pprint(r)
+    tqdm.write("*** Session published: " + session['key'])
+    tqdm.write(pprint.pformat(r))
     return
 
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     dry_run = args.dry_run
     if dry_run:
         print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
-    no_mapillary_data = args.no_mapillary_tags
+    no_mapillary_tags = args.no_mapillary_tags
 
 
     client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
@@ -132,7 +132,7 @@ if __name__ == "__main__":
                 session = create_session(path)
             for image_name in image_files(files):
                 filepath = path + os.sep + image_name
-                if not no_mapillary_data:
+                if not no_mapillary_tags:
                     add_mapillary_tags(filepath)
                 if not dry_run:
                     upload_imagery(session, filepath)
