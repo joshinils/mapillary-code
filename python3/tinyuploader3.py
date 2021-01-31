@@ -96,7 +96,7 @@ if __name__ == "__main__":
     images_path = args.images_path
     dry_run = args.dry_run
     if dry_run:
-        print("DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
+        print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
     no_mapillary_data = args.no_mapillary_tags
 
 
@@ -109,24 +109,23 @@ if __name__ == "__main__":
         print("No valid directory given for upload as parameter.")
         exit(1)
 
-    total_files = 0
-    total_dirs = 0
+    # compute totals for progress bar
+    total_images = 0
+    total_image_dirs = 0
     for path, dirs, files in os.walk(images_path):
-        total_files += len(image_files(files))
-        if len(files) > 0:
-            total_dirs += 1
+        new_images = len(image_files(files))
+        total_images += new_images
+        if new_images > 0:
+            total_image_dirs += 1
 
-    total_pbar = tqdm(total = total_files)
-    if total_dirs > 1:
-        dirs_pbar = tqdm(total = total_dirs)
+    # initialize progress bars
+    total_pbar = tqdm(total = total_images)
+    if total_image_dirs > 1:
+        dirs_pbar = tqdm(total = total_image_dirs)
     else:
         dirs_pbar = None
 
     for path, dirs, files in os.walk(images_path):
-        tqdm.write("path " + path)
-        tqdm.write("dirs +" + str(dirs))
-        tqdm.write("files " + str(len(files)))
-        tqdm.write("")
         if len(files) > 0:
             tqdm.write("*** Uploading directory: " + path)
             if not dry_run:
@@ -138,7 +137,7 @@ if __name__ == "__main__":
                 if not dry_run:
                     upload_imagery(session, filepath)
                 else:
-                    time.sleep(1/total_files)
+                    time.sleep(1/total_images)
                 total_pbar.update()
             if not dry_run:
                 publish_session(session)
