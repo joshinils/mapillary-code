@@ -3,8 +3,10 @@ import sys
 import json
 import requests
 import piexif
+import argparse
+import time
 from tqdm import tqdm
-from pprint import pprint
+import pprint
 from exifpil3 import PILExifReader
 
 
@@ -28,7 +30,7 @@ def create_session(subdir):
     r = requests.post('https://a.mapillary.com/v3/me/uploads?client_id=' + client_id, data=json.dumps(data), headers=headers)
     session = r.json()
     # pprint(session)
-    print("Session open:", session['key'])
+    tqdm.write("Session open: " + session['key'])
     f = open(subdir + os.sep + "session.json", "w")
     f.write(json.dumps(session, sort_keys=True, indent=4))
     f.close()
@@ -41,8 +43,8 @@ def publish_session(session):
         "Authorization": "Bearer " + access_token
     }
     r = requests.put("https://a.mapillary.com/v3/me/uploads/" +key + "/closed?client_id=" + client_id, headers=headers)
-    print("*** Session published:", session['key'])
-    pprint(r)
+    tqdm.write("*** Session published: " + session['key'])
+    tqdm.write(pprint.pformat(r))
     return
 
 
@@ -76,31 +78,75 @@ def add_mapillary_tags(filepath):
     piexif.insert(exif_bytes, filepath)
     # pprint(exif_dict)
 
+def image_files(files):
+    return [f for f in files if    f.lower().endswith('.jpg')
+                                or f.lower().endswith('.jpeg')
+                                or f.lower().endswith('.png')]
+
 #
 #   Main
 #
-client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
-print ("*** Read access token")
-f = open("accesstoken3.conf", "r")
-access_token = f.read()
-f.close()
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description = 'uploads images from IMAGES_PATH as an image sequence to mapillary',
+                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-d', '--images_path', type = str, default = r"D:\Mapillary\DCIM", help = 'path to images')
+    parser.add_argument('-n', '--dry_run', help = 'dry run, do not actually upload imagery', action = "store_true")
+    parser.add_argument('-m', '--no_mapillary_tags', help = 'dry run, do not actually upload imagery', action = "store_false")
+    args = parser.parse_args()
+    images_path = args.images_path
+    dry_run = args.dry_run
+    if dry_run:
+        print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
+    no_mapillary_tags = args.no_mapillary_tags
 
-try:
-    ordnerpfad = sys.argv[1]
-except:
-    ordnerpfad = r"D:\Mapillary\DCIM"
-if not(os.path.isdir(ordnerpfad)):
-    print("No valid directory given for upload as parameter.")
-    exit(1)
-for subdirz, dirz, filez in os.walk(ordnerpfad):
-    if len(filez) > 0:
-        print("\n*** Upload directory:", subdirz)
-        session = create_session(subdirz)
-        for f in tqdm(filez):
-            filepath = subdirz + os.sep + f
-            if filepath.lower().endswith('.jpg'):
-                # print(filepath)
-                add_mapillary_tags(filepath)
-                upload_imagery(session, filepath)
-        publish_session(session)
+
+    client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
+    print ("*** Read access token")
+    with open("accesstoken3.conf", "r") as image_name:
+        access_token = image_name.read()
+
+    if not(os.path.isdir(images_path)):
+        print("No valid directory given for upload as parameter.")
+        exit(1)
+
+    # compute totals for progress bar
+    total_images = 0
+    total_image_dirs = 0
+    for path, dirs, files in os.walk(images_path):
+        new_images = len(image_files(files))
+        total_images += new_images
+        if new_images > 0:
+            total_image_dirs += 1
+
+    # initialize progress bars
+    total_pbar = tqdm(total = total_images)
+    if total_image_dirs > 1:
+        dirs_pbar = tqdm(total = total_image_dirs)
+    else:
+        dirs_pbar = None
+
+    for path, dirs, files in os.walk(images_path):
+        if len(files) > 0:
+            tqdm.write("*** Uploading directory: " + path)
+            if not dry_run:
+                session = create_session(path)
+            for image_name in image_files(files):
+                filepath = path + os.sep + image_name
+                if not no_mapillary_tags:
+                    add_mapillary_tags(filepath)
+                if not dry_run:
+                    upload_imagery(session, filepath)
+                else:
+                    time.sleep(1/total_images)
+                total_pbar.update()
+            if not dry_run:
+                publish_session(session)
+            else:
+                time.sleep(1)
+            if dirs_pbar:
+                dirs_pbar.update()
+    total_pbar.close()
+    if dirs_pbar:
+        dirs_pbar.close()
+
 
