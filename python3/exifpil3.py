@@ -34,34 +34,46 @@ class PILExifReader:
         #Get XMP from file:
         xmp = xmpfile.get_xmp()
 
-        xmp_dict = file_to_dict(self._filepath)
+        # xmp_dict = file_to_dict(self._filepath)
 
-        ns_xmp = xmp_dict[libxmp.consts.XMP_NS_XMP]
-        pprint.pprint(ns_xmp)
+        # try:
+        #     ns_xmp = xmp_dict[libxmp.consts.XMP_NS_XMP]
+        #     #pprint.pprint(ns_xmp)
+        # except:
+        #     print("XMP_NS_XMP")
 
-        ns_dc = xmp_dict[libxmp.consts.XMP_NS_DC]
-        pprint.pprint(ns_dc)
+        # try:
+        #     ns_dc = xmp_dict[libxmp.consts.XMP_NS_DC]
+        #     #pprint.pprint(ns_dc)
+        # except:
+        #     print("XMP_NS_DC")
 
-        try:
-            ns_IPTCCore = xmp_dict[libxmp.consts.XMP_NS_IPTCCore]
-            pprint.pprint(ns_IPTCCore)
-        except:
-            pass
+        # try:
+        #     ns_IPTCCore = xmp_dict[libxmp.consts.XMP_NS_IPTCCore]
+        #     #pprint.pprint(ns_IPTCCore)
+        # except:
+        #     print("XMP_NS_IPTCCore")
 
-        print("\nxmp:")
-        pprint.pprint(xmp)
+        # #print("\nxmp:")
+        # #pprint.pprint(xmp)
 
-        try:
-            description = xmp.get_property(libxmp.consts.XMP_NS_XMP, 'xmp:description' )
-            print("\ndescription:")
-            pprint.pprint(description)
-        except:
-            pass
+        # try:
+        #     description = xmp.get_property(libxmp.consts.XMP_NS_XMP, 'xmp:description' )
+        #     print("\ndescription:")
+        #     #pprint.pprint(description)
+        # except:
+        #     pass
 
         # change the xmp
-        xmp.set_property(libxmp.consts.XMP_NS_XMP, u'description', u' ' )
-        xmp.set_property(libxmp.consts.XMP_NS_IPTCCore, u'description', u' ' )
-        xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u' ' )
+        try:
+            xmp.set_property(libxmp.consts.XMP_NS_XMP, u'description', u'' )
+        except:pass
+        try:
+            xmp.set_property(libxmp.consts.XMP_NS_IPTCCore, u'description', u'' )
+        except:pass
+        try:
+            xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u'' )
+        except:pass
 
         if xmpfile.can_put_xmp(xmp):
             xmpfile.put_xmp(xmp)
