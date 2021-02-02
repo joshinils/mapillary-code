@@ -2,6 +2,9 @@ import datetime
 # import struct  # Only to catch struct.error due to error in PIL / Pillow.
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
+import pprint
+import libxmp # python-xmp-toolkit, https://python-xmp-toolkit.readthedocs.io/en/latest/installation.html
+from libxmp.utils import file_to_dict
 
 # Original:  https://gist.github.com/erans/983821
 # License:   MIT
@@ -20,9 +23,51 @@ class ExifException(Exception):
 class PILExifReader:
     def __init__(self, filepath):
         self._filepath = filepath
-        image = Image.open(filepath)
-        self._exif = self.get_exif_data(image)
-        image.close()
+        with Image.open(filepath) as image:
+            self._exif = self.get_exif_data(image)
+
+        self.remove_XMP_description()
+
+    def remove_XMP_description(self):
+        xmpfile = libxmp.XMPFiles( file_path = self._filepath, open_forupdate=True )
+
+        #Get XMP from file:
+        xmp = xmpfile.get_xmp()
+
+        xmp_dict = file_to_dict(self._filepath)
+
+        ns_xmp = xmp_dict[libxmp.consts.XMP_NS_XMP]
+        pprint.pprint(ns_xmp)
+
+        ns_dc = xmp_dict[libxmp.consts.XMP_NS_DC]
+        pprint.pprint(ns_dc)
+
+        try:
+            ns_IPTCCore = xmp_dict[libxmp.consts.XMP_NS_IPTCCore]
+            pprint.pprint(ns_IPTCCore)
+        except:
+            pass
+
+        print("\nxmp:")
+        pprint.pprint(xmp)
+
+        try:
+            description = xmp.get_property(libxmp.consts.XMP_NS_XMP, 'xmp:description' )
+            print("\ndescription:")
+            pprint.pprint(description)
+        except:
+            pass
+
+        # change the xmp
+        xmp.set_property(libxmp.consts.XMP_NS_XMP, u'description', u' ' )
+        xmp.set_property(libxmp.consts.XMP_NS_IPTCCore, u'description', u' ' )
+        xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u' ' )
+
+        if xmpfile.can_put_xmp(xmp):
+            xmpfile.put_xmp(xmp)
+        else:
+            print("can not put xmp")
+        xmpfile.close_file()
 
     def get_exif_data(self, image):
         """Returns a dictionary from the exif data of an PIL Image
@@ -30,6 +75,7 @@ class PILExifReader:
         exif_data = {}
         try:
             info = image._getexif()
+
         except OverflowError as e:
             if e.message == "cannot fit 'long' into an index-sized integer":
                 # Error in PIL when exif data is corrupt.
@@ -61,27 +107,40 @@ class PILExifReader:
         # read and format capture time
         if self._exif == None:
             print("Exif is none.")
+
+        #default value if none exists
+        capture_time = "1970_01_01_00_00_00_000"
         if time_tag in self._exif:
             capture_time = self._exif[time_tag]
-            capture_time = capture_time.replace(" ","_")
-            capture_time = capture_time.replace(":","_")
-        elif "ImageDescription" in self._exif:
-            dict =  ast.literal_eval(self._exif["ImageDescription"])
-            capture_time = dict["MAPCaptureTime"][0:19]
-            capture_time = capture_time.replace(" ","_")
-            capture_time = capture_time.replace(":","_")
+        elif "ImageDescription" in self._exif or "Description" in self._exif:
+            pprint.pprint(self._exif)
+            try:
+                dict = ast.literal_eval(self._exif["ImageDescription"])
+                capture_time = dict["MAPCaptureTime"]
+                pprint.pprint(dict)
+            except:
+                try:
+                    dict = ast.literal_eval(self._exif["Description"])
+                    pprint.pprint(dict)
+                    capture_time = dict["MAPCaptureTime"]
+                except:
+                    print("No time tag in " + self._filepath)
         else:
-            print("No time tag in "+self._filepath)
-            capture_time = 0
+            print("No time tag in " + self._filepath)
+        capture_time = capture_time.replace(" ","_")
+        capture_time = capture_time.replace(":","_")
 
         # return as datetime object
-        return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S')
+        return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
 
     def _get_if_exist(self, data, key):
         if key in data:
             return data[key]
         else:
             return None
+
+    def get_exif_tag(self, key_name):
+        return self._exif[key_name] or None
 
     def _convert_to_degress(self, value):
         """Helper function to convert the GPS coordinates stored in
