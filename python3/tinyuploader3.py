@@ -1,13 +1,14 @@
-import os
-import json
-import requests
 import argparse
-import time
+import json
+import os
 import pprint
+import time
+
+import requests
 from tqdm import tqdm
 
 
-def upload_imagery(session, filepath):
+def upload_image(session, filepath):
     filename = os.path.basename(filepath)
     fields = session['fields'].copy()
     fields['key'] = session['key_prefix'] + filename
@@ -66,20 +67,7 @@ def image_files(files):
     return [f for f in files if f.lower().endswith('.jpg')
             or f.lower().endswith('.jpeg')]
 
-
-#
-#   Main
-#
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='uploads images from IMAGES_PATH as an image sequence to mapillary',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-d', '--images_path', type=str,
-                        default=r"D:\Mapillary\DCIM", help='path to images')
-    parser.add_argument(
-        '-n', '--dry_run', help='dry run, do not actually upload imagery', action="store_true")
-    args = parser.parse_args()
-    images_path = args.images_path
-    dry_run = args.dry_run
+def upload_folder(images_path, dry_run):
     if dry_run:
         print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
 
@@ -95,7 +83,7 @@ if __name__ == "__main__":
     # compute totals for progress bar
     total_images = 0
     total_image_dirs = 0
-    for path, dirs, files in os.walk(images_path):
+    for path, _, files in os.walk(images_path):
         new_images = len(image_files(files))
         total_images += new_images
         if new_images > 0:
@@ -108,7 +96,7 @@ if __name__ == "__main__":
     else:
         dirs_pbar = None
 
-    for path, dirs, files in os.walk(images_path):
+    for path, _, files in os.walk(images_path):
         if len(files) > 0:
             tqdm.write("*** Uploading directory: " + path)
             if not dry_run:
@@ -116,7 +104,7 @@ if __name__ == "__main__":
             for image_name in image_files(files):
                 filepath = path + os.sep + image_name
                 if not dry_run:
-                    upload_imagery(session, filepath)
+                    upload_image(session, filepath)
                 else:
                     time.sleep(1/total_images)
                 total_pbar.update()
@@ -129,3 +117,19 @@ if __name__ == "__main__":
     total_pbar.close()
     if dirs_pbar:
         dirs_pbar.close()
+
+#
+#   Main
+#
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='uploads images from IMAGES_PATH as an image sequence to mapillary',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-d', '--images_path', type=str,
+                        default=r"D:\Mapillary\DCIM", help='path to images')
+    parser.add_argument(
+        '-n', '--dry_run', help='dry run, do not actually upload imagery', action="store_true")
+    args = parser.parse_args()
+    images_path = args.images_path
+    dry_run = args.dry_run
+
+    upload_folder(images_path, dry_run)

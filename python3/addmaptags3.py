@@ -105,16 +105,35 @@ def process_image_tags(folder_path) -> bool:
     if not(os.path.isdir(folder_path)):
         print("No valid directory given as parameter.")
         return False
+
+    # compute totals for progress bar
+    total_images = 0
+    total_image_dirs = 0
+    for path, _, files in os.walk(folder_path):
+        new_images = len(image_files(files))
+        total_images += new_images
+        if new_images > 0:
+            total_image_dirs += 1
+
+    # initialize progress bars
+    total_pbar = tqdm(total=total_images)
+    if total_image_dirs > 1:
+        dirs_pbar = tqdm(total=total_image_dirs)
+    else:
+        dirs_pbar = None
+
     # Loop over JPG files
-    for path, dirs, files in os.walk(folder_path):
+    for path, _, files in os.walk(folder_path):
         if len(files) > 0:
-            print("\nAdding ImageDescription: ", path)
-            for file_name in tqdm(image_files(files)):
+            tqdm.write("Adding ImageDescription: " + path)
+            for file_name in image_files(files):
                 absolute_file_path = path + os.sep + file_name
                 add_mapillary_tags(absolute_file_path)
+                total_pbar.update()
+            if dirs_pbar:
+                dirs_pbar.update()
 
     return True
-
 
 #
 #   Main
