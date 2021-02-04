@@ -11,9 +11,10 @@
 
 import os
 import sys
+import time
+
+from PIL import Image, ImageOps
 from tqdm import tqdm
-from PIL import Image
-from PIL import ImageOps
 
 
 def optimize_file(file_path):
@@ -29,22 +30,58 @@ def optimize_file(file_path):
     return True
 
 
+def image_files(files):
+    return [f for f in files if f.lower().endswith('.jpg')
+            or f.lower().endswith('.jpeg')]
+
+
+def optimize_folder(folder_path, dry_run):
+    if dry_run:
+        print("*** DRY RUN, NOT ACTUALLY OPTIMIZING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
+    print("   *** JPEG optimizer ***")
+    if not(os.path.isdir(folder_path)):
+        print("No valid directory given as parameter.")
+        exit(1)
+
+    # compute totals for progress bar
+    total_images = 0
+    total_image_dirs = 0
+    for path, _, files in os.walk(folder_path):
+        new_images = len(image_files(files))
+        total_images += new_images
+        if new_images > 0:
+            total_image_dirs += 1
+
+    # initialize progress bars
+    total_pbar = tqdm(total=total_images)
+    if total_image_dirs > 1:
+        dirs_pbar = tqdm(total=total_image_dirs)
+    else:
+        dirs_pbar = None
+
+    # Loop over JPG files
+    for path, _, files in os.walk(folder_path):
+        if len(files) > 0:
+            tqdm.write("   *** Optimizing: " + path)
+            for image_name in image_files(files):
+                absolute_filepath = path + os.sep + image_name
+                if not dry_run:
+                    success = optimize_file(absolute_filepath)
+                    if not success:
+                        tqdm.write("removing image:", absolute_filepath)
+                        os.remove(absolute_filepath)
+                else:
+                    time.sleep(1/total_images)
+                total_pbar.update()
+            if dirs_pbar:
+                dirs_pbar.update()
+    total_pbar.close()
+    if dirs_pbar:
+        dirs_pbar.close()
+
+
 #
 #   Main
 #
 if __name__ == "__main__":
-    print("*** JPEG optimizer ***")
-    ordnerpfad = sys.argv[1]
-    if not(os.path.isdir(ordnerpfad)):
-        print("No valid directory given as parameter.")
-        exit(1)
-    # Loop over JPG files
-    for subdirz, dirz, filez in os.walk(ordnerpfad):
-        if len(filez) > 0:
-            print("\nOptimizing:", subdirz)
-            for f in tqdm(filez):
-                file_path = subdirz + os.sep + f
-                if file_path.lower().endswith('.jpg'):
-                    success = optimize_file(file_path)
-                    if not(success):
-                        os.remove(file_path)
+    optimize_folder(sys.argv[1])
