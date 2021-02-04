@@ -3,6 +3,7 @@ import json
 import os
 import pprint
 import sys
+import time
 
 import piexif
 from tqdm import tqdm
@@ -98,11 +99,13 @@ def image_files(files):
             or f.lower().endswith('.jpeg')]
 
 
-def process_image_tags(folder_path) -> bool:
+def process_image_tags(folder_path, dry_run) -> bool:
     """processes image tags like exif, XMP and adds the necessary and optional tags for mapillary if possible
        returns success
     """
-    print("*** Add Mapillary EXIF ImageDescription ***")
+    if dry_run:
+        print("*** DRY RUN, NOT ACTUALLY PROCESSING ANY IMAGE TAGS, THE FOLLOWING IS SAMPLE OUTPUT")
+    print("   *** Add Mapillary EXIF ImageDescription ***")
     if not(os.path.isdir(folder_path)):
         print("No valid directory given as parameter.")
         return False
@@ -126,13 +129,19 @@ def process_image_tags(folder_path) -> bool:
     # Loop over JPG files
     for path, _, files in os.walk(folder_path):
         if len(files) > 0:
-            tqdm.write("Adding ImageDescription: " + path)
+            tqdm.write("   *** Adding ImageDescription: " + path)
             for file_name in image_files(files):
                 absolute_file_path = path + os.sep + file_name
-                add_mapillary_tags(absolute_file_path)
+                if not dry_run:
+                    add_mapillary_tags(absolute_file_path)
+                else:
+                    time.sleep(1/total_images)
                 total_pbar.update()
             if dirs_pbar:
                 dirs_pbar.update()
+    total_pbar.close()
+    if dirs_pbar:
+        dirs_pbar.close()
 
     return True
 

@@ -68,23 +68,23 @@ def image_files(files):
             or f.lower().endswith('.jpeg')]
 
 
-def upload_folder(images_path, dry_run):
+def upload_folder(folder_path, dry_run):
     if dry_run:
         print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
 
     client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
-    print("*** Read access token")
+    print("   *** Read access token")
     with open("accesstoken3.conf", "r") as image_name:
         access_token = image_name.read()
 
-    if not(os.path.isdir(images_path)):
+    if not(os.path.isdir(folder_path)):
         print("No valid directory given for upload as parameter.")
         exit(1)
 
     # compute totals for progress bar
     total_images = 0
     total_image_dirs = 0
-    for path, _, files in os.walk(images_path):
+    for path, _, files in os.walk(folder_path):
         new_images = len(image_files(files))
         total_images += new_images
         if new_images > 0:
@@ -97,15 +97,15 @@ def upload_folder(images_path, dry_run):
     else:
         dirs_pbar = None
 
-    for path, _, files in os.walk(images_path):
+    for path, _, files in os.walk(folder_path):
         if len(files) > 0:
-            tqdm.write("*** Uploading directory: " + path)
+            tqdm.write("   *** Uploading directory: " + path)
             if not dry_run:
                 session = create_session(path)
             for image_name in image_files(files):
-                filepath = path + os.sep + image_name
+                absolute_filepath = path + os.sep + image_name
                 if not dry_run:
-                    upload_image(session, filepath)
+                    upload_image(session, absolute_filepath)
                 else:
                     time.sleep(1/total_images)
                 total_pbar.update()
