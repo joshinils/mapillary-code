@@ -13,9 +13,6 @@ def add_mapillary_tags(filepath):
 
     exif_image_description = ast.literal_eval(
         exif_reader.get_exif_tag("ImageDescription"))
-    print("\nDEBUG: print exif_image_description")
-    pprint.pprint(exif_image_description)
-    print()
     exif_reader.remove_XMP_description()
 
     wanted_description_tags = {
@@ -68,7 +65,6 @@ def add_mapillary_tags(filepath):
         payload_dict["MAPCompassHeading"] = {}
         payload_dict["MAPCompassHeading"]["TrueHeading"] = heading
 
-    print("\nDEBUG: print key, value of comment:")
     for key, value in wanted_description_tags.items():
         if key not in payload_dict:
             if type(wanted_description_tags[key]) is dict:
@@ -76,14 +72,8 @@ def add_mapillary_tags(filepath):
                 for key2, value2 in wanted_description_tags[key].items():
                     if key2 not in payload_dict[key]:
                         payload_dict[key][key2] = exif_image_description[key][key2]
-                        print(key2, payload_dict[key][key2])
             else:
                 payload_dict[key] = exif_image_description[key]
-                print(key, payload_dict[key])
-        else:
-            print("not overwriting: ",
-                  payload_dict[key], " with ", exif_image_description[key])
-    print()
 
     payload_json = json.dumps(payload_dict)
     # print(payload_json)
