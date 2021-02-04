@@ -16,8 +16,9 @@ def add_mapillary_tags(filepath):
     exif_image_description = ast.literal_eval(
         exif_reader.get_exif_tag("ImageDescription"))
 
-    xmp_description = ast.literal_eval(exif_reader.get_XMP_description() or "{}")
-    #pprint.pprint(xmp_description)
+    xmp_description = ast.literal_eval(
+        exif_reader.get_XMP_description() or "{}")
+    # pprint.pprint(xmp_description)
 
     exif_reader.remove_XMP_description()
 
@@ -72,11 +73,11 @@ def add_mapillary_tags(filepath):
         payload_dict["MAPCompassHeading"]["TrueHeading"] = heading
 
     for key, value in wanted_description_tags.items():
-        if key not in payload_dict:
+        if key not in payload_dict and key in exif_image_description:
             if type(wanted_description_tags[key]) is dict:
                 payload_dict[key] = {}
                 for key2, value2 in wanted_description_tags[key].items():
-                    if key2 not in payload_dict[key]:
+                    if key2 not in payload_dict[key] and key2 in exif_image_description[key]:
                         payload_dict[key][key2] = exif_image_description[key][key2]
             else:
                 payload_dict[key] = exif_image_description[key]
@@ -134,6 +135,7 @@ def process_image_tags(folder_path) -> bool:
                 dirs_pbar.update()
 
     return True
+
 
 #
 #   Main

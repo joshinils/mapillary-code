@@ -67,6 +67,7 @@ def image_files(files):
     return [f for f in files if f.lower().endswith('.jpg')
             or f.lower().endswith('.jpeg')]
 
+
 def upload_folder(images_path, dry_run):
     if dry_run:
         print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
@@ -117,6 +118,7 @@ def upload_folder(images_path, dry_run):
     total_pbar.close()
     if dirs_pbar:
         dirs_pbar.close()
+
 
 #
 #   Main
