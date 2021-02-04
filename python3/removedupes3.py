@@ -55,7 +55,8 @@ class GPSDistance:
         # Haversine formula
         difflat = lat2 - lat1
         difflon = lon2 - lon1
-        a = (sin(difflat / 2) ** 2) + (cos(lat1) * cos(lat2) * sin(difflon / 2) ** 2)
+        a = (sin(difflat / 2) ** 2) + (cos(lat1)
+                                       * cos(lat2) * sin(difflon / 2) ** 2)
         # difflon = lon2 - lon1
         c = 2 * asin(sqrt(a))
         r = 6371000  # Radius of The Earth in meters.
@@ -67,6 +68,7 @@ class GPSSpeedErrorFinder:
     """Finds images in a sequence that might have an error in GPS data
      or suggest a track to be split. It is done by looking at the
      speed it would take to travel the distance in question."""
+
     def __init__(self, max_speed_km_h, way_too_high_speed_km_h):
         self._prev_lat_lon = None
         self._previous = None
@@ -96,12 +98,12 @@ class GPSSpeedErrorFinder:
         self._latest_text = "Speed GPS: " + str(speed_gps) + " km/h"
         if speed_gps > self._way_too_high_speed_km_h:
             self._latest_text = ("GPS speed is unrealistically high: %s km/h."
-                % speed_gps)
+                                 % speed_gps)
             self._too_high_speed = True
             return True
         elif speed_gps > self._max_speed_km_h:
             self._latest_text = ("GPS speed is high: %s km/h."
-                % speed_gps )
+                                 % speed_gps)
             self._high_speed = True
             return True
         latlong = exif_reader.get_lat_lon()
@@ -122,7 +124,7 @@ class GPSSpeedErrorFinder:
         speed_km_h = (diff_meters / diff_secs) * 3.6
         if speed_km_h > self._way_too_high_speed_km_h:
             self._latest_text = ("Speed between %s and %s is %s km/h, which is"
-            " unrealistically high." % (self._previous_filepath, file_path, int(speed_km_h)))
+                                 " unrealistically high." % (self._previous_filepath, file_path, int(speed_km_h)))
             self._too_high_speed = True
             return True
         elif speed_km_h > self._max_speed_km_h:
@@ -135,10 +137,10 @@ class GPSSpeedErrorFinder:
             return False
 
     def is_fast(self):
-      return self._high_speed
+        return self._high_speed
 
     def is_too_fast(self):
-      return self._too_high_speed
+        return self._too_high_speed
 
 
 class GPSDistanceDuplicateFinder:
@@ -183,7 +185,7 @@ class GPSDistanceDuplicateFinder:
                 int(diff_meters)) + " m: " + str(is_duplicate)
             return is_duplicate
         else:
-           return False
+            return False
 
 
 class ImageRemover:
@@ -233,14 +235,15 @@ class ImageRemover:
         '''
         Read capture times and sort files in time order.
         '''
-        capture_times = [self._read_capture_time(filepath) for filepath in file_list]
+        capture_times = [self._read_capture_time(
+            filepath) for filepath in file_list]
         sorted_times_files = list(zip(capture_times, file_list))
         sorted_times_files.sort()
         return list(zip(*sorted_times_files))
 
     def do_magic(self):
         """Perform the task of finding and moving images."""
-        #files = [os.path.join(self._src_dir, f) for f in os.listdir(self._src_dir)
+        # files = [os.path.join(self._src_dir, f) for f in os.listdir(self._src_dir)
         #         if os.path.isfile(os.path.join(self._src_dir, f)) and
         #         f.lower().endswith('.jpg')]
         files = []
@@ -265,10 +268,10 @@ class ImageRemover:
         for tester in self._testers:
             is_this_duplicate = tester.is_duplicate(file_path, exif_reader)
             if is_this_duplicate != None:
-              is_duplicate &= is_this_duplicate
-              verbose_text.append(tester.get_latest_text())
+                is_duplicate &= is_this_duplicate
+                verbose_text.append(tester.get_latest_text())
             else:
-              verbose_text.append("No orientation")
+                verbose_text.append("No orientation")
 
         if self.verbose >= 1:
             print(", ".join(verbose_text), "=>", is_duplicate)

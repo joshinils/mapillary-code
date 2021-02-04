@@ -13,7 +13,7 @@ oauth = OAuth2Session(client=mobile, redirect_uri=redirect_uri, scope=scopes)
 authorization_url, state = oauth.authorization_url(url=auth_url)
 print("State:", state)
 
-print( 'Please go to %s and authorize access.' % authorization_url)
+print('Please go to %s and authorize access.' % authorization_url)
 authorization_response = input('\nEnter the resulting callback URL:\n')
 
 f = open("accesstoken3.conf", "w")

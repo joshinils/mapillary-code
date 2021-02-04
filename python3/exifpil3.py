@@ -1,16 +1,17 @@
+import ast
 import datetime
+import pprint
+
+import libxmp  # python-xmp-toolkit, https://python-xmp-toolkit.readthedocs.io/en/latest/installation.html
+from libxmp.utils import file_to_dict
 # import struct  # Only to catch struct.error due to error in PIL / Pillow.
 from PIL import Image
-from PIL.ExifTags import TAGS, GPSTAGS
-import pprint
-import libxmp # python-xmp-toolkit, https://python-xmp-toolkit.readthedocs.io/en/latest/installation.html
-from libxmp.utils import file_to_dict
+from PIL.ExifTags import GPSTAGS, TAGS
 
 # Original:  https://gist.github.com/erans/983821
 # License:   MIT
 # Credits:   https://gist.github.com/erans
 
-import ast
 
 class ExifException(Exception):
     def __init__(self, message):
@@ -26,34 +27,6 @@ class PILExifReader:
         with Image.open(filepath) as image:
             self._exif = self.get_exif_data(image)
             pprint.pprint(self._exif)
-
-    def remove_XMP_description(self) -> bool:
-        """ sets the XMP description tag from the images metadata to " "
-            returns success
-        """
-        xmp_file = libxmp.XMPFiles( file_path = self._filepath, open_forupdate=True )
-
-        # Get XMP from file
-        xmp = xmp_file.get_xmp()
-
-        # change the xmp
-        try:
-            xmp.set_property(libxmp.consts.XMP_NS_XMP, u'description', u'' )
-        except:pass
-        try:
-            xmp.set_property(libxmp.consts.XMP_NS_IPTCCore, u'description', u'' )
-        except:pass
-        try:
-            xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u'' )
-        except:pass
-
-        if xmp_file.can_put_xmp(xmp):
-            xmp_file.put_xmp(xmp)
-            xmp_file.close_file()
-            return True
-        else:
-            print("can not put xmp")
-            return False
 
     @staticmethod
     def get_exif_data(image):
@@ -88,35 +61,12 @@ class PILExifReader:
                     exif_data[decoded] = value
         return exif_data
 
-    def read_capture_time(self):
-        """
-            returns None or datetime.datetime
-        """
-        time_tag = "DateTimeOriginal"
-
-        # read and format capture time
-        if self._exif == None:
-            print("Exif is none.")
-
-        if time_tag in self._exif:
-            capture_time = self._exif[time_tag]
-            capture_time = capture_time.replace(" ","_")
-            capture_time = capture_time.replace(":","_")
-            # return as datetime object
-            return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
-        else:
-            print("No time tag in " + self._filepath)
-            return None
-
     @staticmethod
     def _get_if_exist(data, key):
         if key in data:
             return data[key]
         else:
             return None
-
-    def get_exif_tag(self, key_name):
-        return self._exif[key_name] or None
 
     @staticmethod
     def _convert_to_degress(value):
@@ -134,6 +84,78 @@ class PILExifReader:
 
         return d + (m / 60.0) + (s / 3600.0)
 
+    @staticmethod
+    def calc_tuple(tup):
+        if tup is None:
+            return None
+        return int(tup[0]) / int(tup[1])
+
+    @staticmethod
+    def is_ok_num(val, minVal, maxVal):
+        try:
+            num = int(val)
+        except ValueError:
+            return False
+        if num < minVal or num > maxVal:
+            return False
+        return True
+
+    def remove_XMP_description(self) -> bool:
+        """ sets the XMP description tag from the images metadata to " "
+            returns success
+        """
+        xmp_file = libxmp.XMPFiles(
+            file_path=self._filepath, open_forupdate=True)
+
+        # Get XMP from file
+        xmp = xmp_file.get_xmp()
+
+        # change the xmp
+        try:
+            xmp.set_property(libxmp.consts.XMP_NS_XMP, u'description', u'')
+        except:
+            pass
+        try:
+            xmp.set_property(libxmp.consts.XMP_NS_IPTCCore,
+                             u'description', u'')
+        except:
+            pass
+        try:
+            xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u'')
+        except:
+            pass
+
+        if xmp_file.can_put_xmp(xmp):
+            xmp_file.put_xmp(xmp)
+            xmp_file.close_file()
+            return True
+        else:
+            print("can not put xmp")
+            return False
+
+    def read_capture_time(self):
+        """
+            returns None or datetime.datetime
+        """
+        time_tag = "DateTimeOriginal"
+
+        # read and format capture time
+        if self._exif == None:
+            print("Exif is none.")
+
+        if time_tag in self._exif:
+            capture_time = self._exif[time_tag]
+            capture_time = capture_time.replace(" ", "_")
+            capture_time = capture_time.replace(":", "_")
+            # return as datetime object
+            return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
+        else:
+            print("No time tag in " + self._filepath)
+            return None
+
+    def get_exif_tag(self, key_name):
+        return self._exif[key_name] or None
+
     def get_lat_lon(self):
         """Returns the latitude and longitude, if available, from the
         provided exif_data (obtained through get_exif_data above)."""
@@ -150,7 +172,7 @@ class PILExifReader:
         gps_longitude_ref = self._get_if_exist(gps_info, 'GPSLongitudeRef')
 
         if (gps_latitude and gps_latitude_ref
-            and gps_longitude and gps_longitude_ref):
+                and gps_longitude and gps_longitude_ref):
 
             lat = self._convert_to_degress(gps_latitude)
             if gps_latitude_ref != "N":
@@ -164,12 +186,6 @@ class PILExifReader:
             return lat, lon
         else:
             return None
-
-    @staticmethod
-    def calc_tuple(tup):
-        if tup is None:
-            return None
-        return int(tup[0]) / int(tup[1])
 
     def get_gps_info(self):
         if self._exif is None or not "GPSInfo" in self._exif:
@@ -213,7 +229,7 @@ class PILExifReader:
         if speed_ref == "k":
             pass  # km/h - we are happy.
         elif speed_ref == "m":
-            #Miles pr. hour => km/h
+            # Miles pr. hour => km/h
             speed *= 1.609344
         elif speed_ref == "n":
             # Knots => km/h
@@ -224,16 +240,6 @@ class PILExifReader:
             print("Please file a bug and attache the image.")
             return None
         return speed
-
-    @staticmethod
-    def is_ok_num(val, minVal, maxVal):
-        try:
-            num = int(val)
-        except ValueError:
-            return False
-        if num < minVal or num > maxVal:
-            return False
-        return True
 
     def get_time(self):
         # Example data

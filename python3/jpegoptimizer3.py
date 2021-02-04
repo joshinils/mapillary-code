@@ -33,7 +33,7 @@ def optimize_file(file_path):
 #   Main
 #
 if __name__ == "__main__":
-    print ("*** JPEG optimizer ***")
+    print("*** JPEG optimizer ***")
     ordnerpfad = sys.argv[1]
     if not(os.path.isdir(ordnerpfad)):
         print("No valid directory given as parameter.")
@@ -48,4 +48,3 @@ if __name__ == "__main__":
                     success = optimize_file(file_path)
                     if not(success):
                         os.remove(file_path)
-

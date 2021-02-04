@@ -7,10 +7,12 @@ import pprint
 from exifpil3 import PILExifReader
 import ast
 
+
 def add_mapillary_tags(filepath):
     exif_reader = PILExifReader(filepath)
 
-    exif_image_description =  ast.literal_eval(exif_reader.get_exif_tag("ImageDescription"))
+    exif_image_description = ast.literal_eval(
+        exif_reader.get_exif_tag("ImageDescription"))
     print("\nDEBUG: print exif_image_description")
     pprint.pprint(exif_image_description)
     print()
@@ -79,28 +81,31 @@ def add_mapillary_tags(filepath):
                 payload_dict[key] = exif_image_description[key]
                 print(key, payload_dict[key])
         else:
-            print("not overwriting: ", payload_dict[key], " with ", exif_image_description[key])
+            print("not overwriting: ",
+                  payload_dict[key], " with ", exif_image_description[key])
     print()
 
     payload_json = json.dumps(payload_dict)
     # print(payload_json)
     exif_dict = piexif.load(filepath)
-    exif_dict['0th'][piexif.ImageIFD.ImageDescription] = payload_json.encode('utf-8')
+    exif_dict['0th'][piexif.ImageIFD.ImageDescription] = payload_json.encode(
+        'utf-8')
     exif_bytes = piexif.dump(exif_dict)
     piexif.insert(exif_bytes, filepath)
     # pprint.pprint(exif_dict)
     return True
 
+
 def image_files(files):
-    return [f for f in files if    f.lower().endswith('.jpg')
-                                or f.lower().endswith('.jpeg')]
+    return [f for f in files if f.lower().endswith('.jpg')
+            or f.lower().endswith('.jpeg')]
 
 
 def process_image_tags(folder_path) -> bool:
     """processes image tags like exif, XMP and adds the necessary and optional tags for mapillary if possible
        returns success
     """
-    print ("*** Add Mapillary EXIF ImageDescription ***")
+    print("*** Add Mapillary EXIF ImageDescription ***")
     if not(os.path.isdir(folder_path)):
         print("No valid directory given as parameter.")
         return False
@@ -113,6 +118,7 @@ def process_image_tags(folder_path) -> bool:
                 add_mapillary_tags(absolute_file_path)
 
     return True
+
 
 #
 #   Main
