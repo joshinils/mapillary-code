@@ -35,8 +35,8 @@ def exif_gps_fields():
     '''
     GPS fields in EXIF
     '''
-    return [  ["GPS GPSLongitude", "EXIF GPS GPSLongitude"],
-              ["GPS GPSLatitude", "EXIF GPS GPSLatitude"] ]
+    return [["GPS GPSLongitude", "EXIF GPS GPSLongitude"],
+            ["GPS GPSLatitude", "EXIF GPS GPSLatitude"]]
 
 
 def exif_datetime_fields():
@@ -86,6 +86,7 @@ def extract_exif_from_file(fileobj):
     d = exif_data.extract_exif()
     return d
 
+
 def required_fields():
     return exif_gps_fields() + exif_datetime_fields()
 
@@ -117,6 +118,7 @@ class EXIF:
     '''
     EXIF class for reading exif from an image
     '''
+
     def __init__(self, filename, details=False):
         '''
         Initialize EXIF object with FILE as filename or fileobj
@@ -127,7 +129,6 @@ class EXIF:
                 self.tags = exifread.process_file(fileobj, details=details)
         else:
             self.tags = exifread.process_file(filename, details=details)
-
 
     def _extract_alternative_fields(self, fields, default=None, field_type=float):
         '''
@@ -145,21 +146,21 @@ class EXIF:
                 return value, field
         return default, None
 
-
     def exif_name(self):
         '''
         Name of file in the form {lat}_{lon}_{ca}_{datetime}_{filename}
         '''
         lon, lat = self.extract_lon_lat()
         ca = self.extract_direction()
-        if ca is None: ca = 0
+        if ca is None:
+            ca = 0
         ca = int(ca)
         date_time = self.extract_capture_time()
         date_time = date_time.strftime("%Y-%m-%d-%H-%M-%S-%f")
         date_time = date_time[:-3]
-        filename = '{}_{}_{}_{}_{}'.format(lat, lon, ca, date_time, os.path.basename(self.filename))
+        filename = '{}_{}_{}_{}_{}'.format(
+            lat, lon, ca, date_time, os.path.basename(self.filename))
         return filename
-
 
     def extract_altitude(self):
         '''
@@ -169,7 +170,6 @@ class EXIF:
         altitude, _ = self._extract_alternative_fields(fields)
         return altitude
 
-
     def extract_capture_time(self):
         '''
         Extract capture time from EXIF
@@ -177,20 +177,23 @@ class EXIF:
         TODO: handle GPS DateTime
         '''
         time_string = exif_datetime_fields()[0]
-        capture_time, time_field = self._extract_alternative_fields(time_string, 0, str)
+        capture_time, time_field = self._extract_alternative_fields(
+            time_string, 0, str)
         capture_time = capture_time.replace(" ", "_")
         capture_time = capture_time.replace(":", "_")
-        capture_time = datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S')
+        capture_time = datetime.datetime.strptime(
+            capture_time, '%Y_%m_%d_%H_%M_%S')
         sub_sec = self.extract_subsec()
-        capture_time = capture_time + datetime.timedelta(seconds=float(sub_sec)/10**len(str(sub_sec)))
+        capture_time = capture_time + \
+            datetime.timedelta(seconds=float(sub_sec)/10**len(str(sub_sec)))
         if capture_time == 0:
             # try interpret the filename
             try:
-                capture_time = datetime.datetime.strptime(os.path.basename(self.filename)[:-4]+'000', '%Y_%m_%d_%H_%M_%S_%f')
+                capture_time = datetime.datetime.strptime(os.path.basename(self.filename)[
+                                                          :-4]+'000', '%Y_%m_%d_%H_%M_%S_%f')
             except:
                 pass
         return capture_time
-
 
     def extract_direction(self):
         '''
@@ -201,9 +204,9 @@ class EXIF:
                   'GPS GPSTrack',
                   'EXIF GPS GPSTrack']
         direction, _ = self._extract_alternative_fields(fields)
-        if direction is not None: direction = normalize_bearing(direction)
+        if direction is not None:
+            direction = normalize_bearing(direction)
         return direction
-
 
     def extract_dop(self):
         '''
@@ -212,7 +215,6 @@ class EXIF:
         fields = ['GPS GPSDOP', 'EXIF GPS GPSDOP']
         dop, _ = self._extract_alternative_fields(fields)
         return dop
-
 
     def extract_geo(self):
         '''
@@ -231,7 +233,6 @@ class EXIF:
             d['dop'] = dop
         return d
 
-
     def extract_exif(self):
         '''
         Extract a list of exif infos
@@ -243,34 +244,34 @@ class EXIF:
         capture = self.extract_capture_time()
         direction = self.extract_direction()
         d = {
-                'width': width,
-                'height': height,
-                'orientation': orientation,
-                'direction': direction,
-                'make': make,
-                'model': model,
-                'capture_time': capture
-            }
+            'width': width,
+            'height': height,
+            'orientation': orientation,
+            'direction': direction,
+            'make': make,
+            'model': model,
+            'capture_time': capture
+        }
         d['gps'] = geo
         return d
-
 
     def extract_image_size(self):
         '''
         Extract image height and width
         '''
-        width, _ = self._extract_alternative_fields(['Image ImageWidth', 'EXIF ExifImageWidth'], -1, int)
-        height, _ = self._extract_alternative_fields(['Image ImageLength', 'EXIF ExifImageLength'], -1, int)
+        width, _ = self._extract_alternative_fields(
+            ['Image ImageWidth', 'EXIF ExifImageWidth'], -1, int)
+        height, _ = self._extract_alternative_fields(
+            ['Image ImageLength', 'EXIF ExifImageLength'], -1, int)
         return width, height
-
 
     def extract_image_description(self):
         '''
         Extract image description
         '''
-        description, _ = self._extract_alternative_fields(['Image ImageDescription'], "{}", str)
+        description, _ = self._extract_alternative_fields(
+            ['Image ImageDescription'], "{}", str)
         return description
-
 
     def extract_lon_lat(self):
         if 'GPS GPSLatitude' in self.tags and 'GPS GPSLatitude' in self.tags:
@@ -287,33 +288,32 @@ class EXIF:
             lon, lat = None, None
         return lon, lat
 
-
     def extract_make(self):
         '''
         Extract camera make
         '''
         fields = ['EXIF LensMake', 'Image Make']
-        make, _ = self._extract_alternative_fields(fields, default='none', field_type=str)
+        make, _ = self._extract_alternative_fields(
+            fields, default='none', field_type=str)
         return make
-
 
     def extract_model(self):
         '''
         Extract camera model
         '''
         fields = ['EXIF LensModel', 'Image Model']
-        model, _ = self._extract_alternative_fields(fields, default='none', field_type=str)
+        model, _ = self._extract_alternative_fields(
+            fields, default='none', field_type=str)
         return model
-
 
     def extract_orientation(self):
         '''
         Extract image orientation
         '''
         fields = ['Image Orientation']
-        orientation, _ = self._extract_alternative_fields(fields, default=1, field_type=int)
+        orientation, _ = self._extract_alternative_fields(
+            fields, default=1, field_type=int)
         return orientation
-
 
     def extract_subsec(self):
         '''
@@ -325,11 +325,11 @@ class EXIF:
                   'EXIF SubSecTimeDigitized',
                   'Image SubSecTime',
                   'EXIF SubSecTime'
-                 ]
-        sub_sec, _ = self._extract_alternative_fields(fields, default=0, field_type=str)
+                  ]
+        sub_sec, _ = self._extract_alternative_fields(
+            fields, default=0, field_type=str)
         sub_sec = int(sub_sec)
         return sub_sec
-
 
     def fields_exist(self, fields):
         '''
@@ -344,7 +344,6 @@ class EXIF:
                 print(("Missing required EXIF tag: {0}".format(rexif[0])))
                 return False
         return True
-
 
     def mapillary_tag_exists(self):
         '''
@@ -414,7 +413,8 @@ class Sequence(object):
         else:
             file_list = []
             for root, sub_folders, files in os.walk(self.filepath):
-                image_files = [os.path.join(root, filename) for filename in files if (filename.lower().endswith(".jpg"))]
+                image_files = [os.path.join(root, filename) for filename in files if (
+                    filename.lower().endswith(".jpg"))]
                 if check_exif:
                     image_files = [f for f in image_files if verify_exif(f)]
                 file_list += image_files
@@ -424,7 +424,8 @@ class Sequence(object):
         '''
         Read capture times and sort files in time order.
         '''
-        capture_times = [self._read_capture_time(filepath) for filepath in file_list]
+        capture_times = [self._read_capture_time(
+            filepath) for filepath in file_list]
         sorted_times_files = list(zip(capture_times, file_list))
         sorted_times_files.sort()
         return list(zip(*sorted_times_files))
@@ -467,11 +468,13 @@ class Sequence(object):
             # sort based on EXIF capture time
             capture_times, file_list = self.sort_file_list(file_list)
             # diff in capture time
-            capture_deltas = [t2-t1 for t1,t2 in zip(capture_times, capture_times[1:])]
+            capture_deltas = [t2-t1 for t1,
+                              t2 in zip(capture_times, capture_times[1:])]
             # read gps for ordered files
             latlons = [self._read_lat_lon(filepath) for filepath in file_list]
             # distance between consecutive images
-            distances = [gps_distance(ll1, ll2) for ll1, ll2 in zip(latlons, latlons[1:])]
+            distances = [gps_distance(ll1, ll2)
+                         for ll1, ll2 in zip(latlons, latlons[1:])]
             # if cutoff time is given use that, else assume cutoff is 1.5x median time delta
             if cutoff_time is None:
                 median = sorted(capture_deltas)[len(capture_deltas)//2]
@@ -481,7 +484,7 @@ class Sequence(object):
             # extract groups by cutting using cutoff time
             group = [file_list[0]]
             cut = 0
-            for i,filepath in enumerate(file_list[1:]):
+            for i, filepath in enumerate(file_list[1:]):
                 cut_time = capture_deltas[i].total_seconds() > cutoff_time
                 cut_distance = distances[i] > cutoff_distance
                 cut_sequence_length = len(group) > max_sequence_length
@@ -491,17 +494,21 @@ class Sequence(object):
                     groups.append(group)
                     group = [filepath]
                     if cut_distance:
-                        print('Cut {}: Delta in distance {} meters is too big at {}'.format(cut,distances[i], file_list[i+1]))
+                        print('Cut {}: Delta in distance {} meters is too big at {}'.format(
+                            cut, distances[i], file_list[i+1]))
                     elif cut_time:
-                        print('Cut {}: Delta in time {} seconds is too big at {}'.format(cut, capture_deltas[i].total_seconds(), file_list[i+1]))
+                        print('Cut {}: Delta in time {} seconds is too big at {}'.format(
+                            cut, capture_deltas[i].total_seconds(), file_list[i+1]))
                     elif cut_sequence_length:
-                        print('Cut {}: Maximum sequence length {} reached at {}'.format(cut, max_sequence_length, file_list[i+1]))
+                        print('Cut {}: Maximum sequence length {} reached at {}'.format(
+                            cut, max_sequence_length, file_list[i+1]))
                 else:
                     group.append(filepath)
             groups.append(group)
             # move groups to subfolders
             self.move_groups(groups)
-            print(("Done split photos in {} into {} sequences".format(self.filepath, len(groups))))
+            print(("Done split photos in {} into {} sequences".format(
+                self.filepath, len(groups))))
         return groups
 
     def interpolate_direction(self, offset=0):
@@ -512,19 +519,20 @@ class Sequence(object):
         bearings = {}
         file_list = self.file_list
         num_file = len(file_list)
-        if num_file>1:
+        if num_file > 1:
             # sort based on EXIF capture time
             capture_times, file_list = self.sort_file_list(file_list)
             # read gps for ordered files
             latlons = [self._read_lat_lon(filepath) for filepath in file_list]
-            if len(file_list)>1:
+            if len(file_list) > 1:
                 # bearing between consecutive images
                 bearings = [compute_bearing(ll1[0], ll1[1], ll2[0], ll2[1])
-                                for ll1, ll2 in zip(latlons, latlons[1:])]
+                            for ll1, ll2 in zip(latlons, latlons[1:])]
                 bearings.append(bearings[-1])
-                bearings = {file_list[i]: offset_bearing(b, offset) for i, b in enumerate(bearings)}
-        elif num_file==1:
-            #if there is only one file in the list, just write the direction 0 and offset
+                bearings = {file_list[i]: offset_bearing(
+                    b, offset) for i, b in enumerate(bearings)}
+        elif num_file == 1:
+            # if there is only one file in the list, just write the direction 0 and offset
             bearings = {file_list[0]: offset_bearing(0.0, offset)}
         return bearings
 
@@ -542,7 +550,7 @@ class Sequence(object):
         bearings = [self._read_direction(filepath) for filepath in file_list]
         # interploated bearings
         interpolated_bearings = [compute_bearing(ll1[0], ll1[1], ll2[0], ll2[1])
-                                for ll1, ll2 in zip(latlons, latlons[1:])]
+                                 for ll1, ll2 in zip(latlons, latlons[1:])]
         interpolated_bearings.append(bearings[-1])
         # use interploated bearings if bearing not available in EXIF
         for i, b in enumerate(bearings):
@@ -577,7 +585,8 @@ class Sequence(object):
         groups.append(group)
         # move to filepath/duplicates/group_id (TODO: uploader should skip the duplicate folder)
         self.move_groups(groups, 'duplicates')
-        print(("Done remove duplicate photos in {} into {} groups".format(self.filepath, len(groups))))
+        print(("Done remove duplicate photos in {} into {} groups".format(
+            self.filepath, len(groups))))
         return groups
 
 
@@ -614,6 +623,7 @@ def gps_distance(latlon_1, latlon_2):
     dis = math.sqrt((x1-x2)**2 + (y1-y2)**2 + (z1-z2)**2)
     return dis
 
+
 def dms_to_decimal(degrees, minutes, seconds, hemisphere):
     '''
     Convert from degrees, minutes, seconds to decimal degrees.
@@ -636,10 +646,10 @@ def decimal_to_dms(value, loc):
     else:
         loc_value = ""
     abs_value = abs(value)
-    deg =  int(abs_value)
+    deg = int(abs_value)
     t1 = (abs_value-deg)*60
     mint = int(t1)
-    sec = round((t1 - mint)* 60, 6)
+    sec = round((t1 - mint) * 60, 6)
     return (deg, mint, sec, loc_value)
 
 
@@ -660,14 +670,16 @@ def compute_bearing(start_lat, start_lon, end_lat, end_lon):
     end_lat = math.radians(end_lat)
     end_lon = math.radians(end_lon)
     dLong = end_lon - start_lon
-    dPhi = math.log(math.tan(end_lat/2.0+math.pi/4.0)/math.tan(start_lat/2.0+math.pi/4.0))
+    dPhi = math.log(math.tan(end_lat/2.0+math.pi/4.0) /
+                    math.tan(start_lat/2.0+math.pi/4.0))
     if abs(dLong) > math.pi:
         if dLong > 0.0:
             dLong = -(2.0 * math.pi - dLong)
         else:
             dLong = (2.0 * math.pi + dLong)
     y = math.sin(dLong)*math.cos(end_lat)
-    x = math.cos(start_lat)*math.sin(end_lat) - math.sin(start_lat)*math.cos(end_lat)*math.cos(dLong)
+    x = math.cos(start_lat)*math.sin(end_lat) - \
+        math.sin(start_lat)*math.cos(end_lat)*math.cos(dLong)
     bearing = (math.degrees(math.atan2(y, x)) + 360.0) % 360.0
     return bearing
 
@@ -677,8 +689,9 @@ def diff_bearing(b1, b2):
     Compute difference between two bearings
     '''
     d = abs(b2-b1)
-    d = 360-d if d>180 else d
+    d = 360-d if d > 180 else d
     return d
+
 
 def offset_bearing(bearing, offset):
     '''
@@ -693,10 +706,10 @@ def normalize_bearing(bearing):
         # fix negative value wrongly parsed in exifread
         # -360 degree -> 4294966935 when converting from hex
         bearing = bin(int(bearing))[2:]
-        bearing = ''.join([str(int(int(a)==0)) for a in bearing])
+        bearing = ''.join([str(int(int(a) == 0)) for a in bearing])
         bearing = -float(int(bearing, 2))
         bearing %= 360
-    bearing = (bearing+360.0)%360
+    bearing = (bearing+360.0) % 360
     return bearing
 
 
@@ -706,13 +719,15 @@ def interpolate_lat_lon(points, t):
     Points is a list of tuples (time, lat, lon, elevation), t a datetime object.
     '''
     # find the enclosing points in sorted list
-    if t<points[0][0]:
-        raise ValueError("Photo's timestamp {0} is earlier than the earliest time {1} in the GPX file.".format(t, points[0][0]))
-    if t>=points[-1][0]:
-        raise ValueError("Photo's timestamp is later than the latest time in the GPX file.")
-    for i,point in enumerate(points):
-        if t<point[0]:
-            if i>0:
+    if t < points[0][0]:
+        raise ValueError(
+            "Photo's timestamp {0} is earlier than the earliest time {1} in the GPX file.".format(t, points[0][0]))
+    if t >= points[-1][0]:
+        raise ValueError(
+            "Photo's timestamp is later than the latest time in the GPX file.")
+    for i, point in enumerate(points):
+        if t < point[0]:
+            if i > 0:
                 before = points[i-1]
             else:
                 before = points[i]
@@ -726,7 +741,8 @@ def interpolate_lat_lon(points, t):
     lon = (before[2]*dt_after + after[2]*dt_before) / (dt_before + dt_after)
     bearing = compute_bearing(before[1], before[2], after[1], after[2])
     if before[3] is not None:
-        ele = (before[3]*dt_after + after[3]*dt_before) / (dt_before + dt_after)
+        ele = (before[3]*dt_after + after[3]*dt_before) / \
+            (dt_before + dt_after)
     else:
         ele = None
     return lat, lon, bearing, ele
@@ -740,4 +756,3 @@ if __name__ == '__main__':
         exit(1)
     s = Sequence(path)
     groups = s.split(cutoff_distance=cutoff_distance, cutoff_time=cutoff_time)
-

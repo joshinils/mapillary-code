@@ -1,13 +1,16 @@
+import ast
 import datetime
+import pprint
+
+import subprocess
 # import struct  # Only to catch struct.error due to error in PIL / Pillow.
 from PIL import Image
-from PIL.ExifTags import TAGS, GPSTAGS
+from PIL.ExifTags import GPSTAGS, TAGS
 
 # Original:  https://gist.github.com/erans/983821
 # License:   MIT
 # Credits:   https://gist.github.com/erans
 
-import ast
 
 class ExifException(Exception):
     def __init__(self, message):
@@ -20,16 +23,17 @@ class ExifException(Exception):
 class PILExifReader:
     def __init__(self, filepath):
         self._filepath = filepath
-        image = Image.open(filepath)
-        self._exif = self.get_exif_data(image)
-        image.close()
+        with Image.open(filepath) as image:
+            self._exif = self.get_exif_data(image)
 
-    def get_exif_data(self, image):
+    @staticmethod
+    def get_exif_data(image):
         """Returns a dictionary from the exif data of an PIL Image
         item. Also converts the GPS Tags"""
         exif_data = {}
         try:
             info = image._getexif()
+
         except OverflowError as e:
             if e.message == "cannot fit 'long' into an index-sized integer":
                 # Error in PIL when exif data is corrupt.
@@ -55,53 +59,88 @@ class PILExifReader:
                     exif_data[decoded] = value
         return exif_data
 
-    def read_capture_time(self):
-        time_tag = "DateTimeOriginal"
-
-        # read and format capture time
-        if self._exif == None:
-            print("Exif is none.")
-        if time_tag in self._exif:
-            capture_time = self._exif[time_tag]
-            capture_time = capture_time.replace(" ","_")
-            capture_time = capture_time.replace(":","_")
-        elif "ImageDescription" in self._exif:
-            dict =  ast.literal_eval(self._exif["ImageDescription"])
-            capture_time = dict["MAPCaptureTime"][0:19]
-            capture_time = capture_time.replace(" ","_")
-            capture_time = capture_time.replace(":","_")
-        else:
-            print("No time tag in "+self._filepath)
-            capture_time = 0
-
-        # return as datetime object
-        return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S')
-
-    def _get_if_exist(self, data, key):
+    @staticmethod
+    def _get_if_exist(data, key):
         if key in data:
             return data[key]
         else:
             return None
 
-    def _convert_to_degress(self, value):
+    @staticmethod
+    def _convert_to_degress(value):
         """Helper function to convert the GPS coordinates stored in
         the EXIF to degrees in float format."""
-        d = value[0]
-        # d0 = value[0][0]
-        # d1 = value[0][1]
-        # d = float(d0) / float(d1)
 
-        m = value[1]
-        # m0 = value[1][0]
-        # m1 = value[1][1]
-        # m = float(m0) / float(m1)
-
-        s = value[2]
-        # s0 = value[2][0]
-        # s1 = value[2][1]
-        # s = float(s0) / float(s1)
+        if type(value[0]) is tuple:
+            d = float(value[0][0]) / float(value[0][1])
+            m = float(value[1][0]) / float(value[1][1])
+            s = float(value[2][0]) / float(value[2][1])
+        else:
+            d = value[0]
+            m = value[1]
+            s = value[2]
 
         return d + (m / 60.0) + (s / 3600.0)
+
+    @staticmethod
+    def calc_tuple(tup):
+        if tup is None:
+            return None
+        return int(tup[0]) / int(tup[1])
+
+    @staticmethod
+    def is_ok_num(val, minVal, maxVal):
+        try:
+            num = int(val)
+        except ValueError:
+            return False
+        if num < minVal or num > maxVal:
+            return False
+        return True
+
+    def remove_XMP_description(self):
+        subprocess.Popen(["exiftool", "-XMP:ALL=", self._filepath],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def get_XMP_description(self):
+        sub = subprocess.Popen(["exiftool", "-s", "-s", "-s", "-description", self._filepath],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = sub.communicate("")
+        return output.decode("utf-8").rstrip()
+
+    def get_datetimeoriginal(self):
+        sub = subprocess.Popen(["exiftool", "-s", "-s", "-s", "-datetimeoriginal", self._filepath],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = sub.communicate("")
+        return output.decode("utf-8").rstrip()
+
+    def read_capture_time(self):
+        """
+            returns None or datetime.datetime
+        """
+        time_tag = "DateTimeOriginal"
+
+        # read and format capture time
+        if self._exif == None:
+            print("Exif is none.")
+
+        if time_tag in self._exif:
+            capture_time = self._exif[time_tag]
+        else:
+            capture_time = self.get_datetimeoriginal()
+            if len(capture_time) < 23:
+                capture_time += "1970_01_01_00_00_00_000"[len(capture_time):]
+
+            if capture_time == "":
+                print("No time tag in " + self._filepath)
+                return None
+        capture_time = capture_time.replace(" ", "_")
+        capture_time = capture_time.replace(":", "_")
+        # return as datetime object
+        return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
+
+    def get_exif_tag(self, key_name):
+        return self._exif[key_name] or None
 
     def get_lat_lon(self):
         """Returns the latitude and longitude, if available, from the
@@ -119,7 +158,7 @@ class PILExifReader:
         gps_longitude_ref = self._get_if_exist(gps_info, 'GPSLongitudeRef')
 
         if (gps_latitude and gps_latitude_ref
-            and gps_longitude and gps_longitude_ref):
+                and gps_longitude and gps_longitude_ref):
 
             lat = self._convert_to_degress(gps_latitude)
             if gps_latitude_ref != "N":
@@ -133,11 +172,6 @@ class PILExifReader:
             return lat, lon
         else:
             return None
-
-    def calc_tuple(self, tup):
-        if tup is None:
-            return None
-        return int(tup[0]) / int(tup[1])
 
     def get_gps_info(self):
         if self._exif is None or not "GPSInfo" in self._exif:
@@ -154,11 +188,10 @@ class PILExifReader:
         for tag in ('GPSImgDirection', 'GPSTrack'):
             gps_direction = self._get_if_exist(gps_info, tag)
             # direction = self.calc_tuple(gps_direction)
-            direction = gps_direction
-            if direction == None:
-                continue
-            else:
-                return direction
+            if gps_direction is not None:
+                if type(gps_direction) is tuple:
+                    return self.calc_tuple(gps_direction)
+                return gps_direction
         return None
 
     def get_speed(self):
@@ -182,7 +215,7 @@ class PILExifReader:
         if speed_ref == "k":
             pass  # km/h - we are happy.
         elif speed_ref == "m":
-            #Miles pr. hour => km/h
+            # Miles pr. hour => km/h
             speed *= 1.609344
         elif speed_ref == "n":
             # Knots => km/h
@@ -193,15 +226,6 @@ class PILExifReader:
             print("Please file a bug and attache the image.")
             return None
         return speed
-
-    def is_ok_num(self, val, minVal, maxVal):
-        try:
-            num = int(val)
-        except ValueError:
-            return False
-        if num < minVal or num > maxVal:
-            return False
-        return True
 
     def get_time(self):
         # Example data

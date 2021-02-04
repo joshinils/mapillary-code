@@ -1,29 +1,148 @@
-import os
-import sys
+import ast
 import json
+import os
+import pprint
+import sys
+import time
+
 import piexif
 from tqdm import tqdm
-import pprint
+
 from exifpil3 import PILExifReader
 
 
 def add_mapillary_tags(filepath):
-    reader = PILExifReader(filepath)
-    datetime = reader.read_capture_time()
-    str_timestamp = datetime.strftime("%Y_%m_%d_%H_%M_%S_%f")[:-3]
-    lat, lon = reader.get_lat_lon()
-    payload_dict = {
-      "MAPLongitude": lon,
-      "MAPLatitude": lat,
-      "MAPCaptureTime": str_timestamp
+    exif_reader = PILExifReader(filepath)
+
+    exif_image_description = ast.literal_eval(
+        exif_reader.get_exif_tag("ImageDescription"))
+
+    xmp_description = ast.literal_eval(
+        exif_reader.get_XMP_description() or "{}")
+    # pprint.pprint(xmp_description)
+
+    exif_reader.remove_XMP_description()
+
+    wanted_description_tags = {
+        "MAPCompassHeading":
+        {
+            "TrueHeading": 0,
+            "MagneticHeading": 0,
+            "AccuracyDegrees": 0
+        },
+        "MAPGpsTime": "",
+        "MAPVersionString": "",
+        "MAPLatitude": 0,
+        "MAPCaptureTime": "",
+        "MAPGPSSpeed": 0,
+        "MAPDeviceModel": "",
+        "MAPAppNameString": "",
+        "MAPAltitude": 0,
+        "MAPLocalTimeZone": "",
+        "MAPGPSAccuracyMeters": 0,
+        "MAPAtanAngle": 0,
+        "MAPLongitude": 0,
+        "MAPDeviceMake": "",
+        "MAPAccelerometerVector":
+        {
+            "x": 0,
+            "y": 0,
+            "z": 0
+        }
     }
+
+    # setup payload_dict with initial data from exif:
+    payload_dict = {}
+    datetime = exif_reader.read_capture_time()
+    if datetime != None:
+        str_timestamp = datetime.strftime("%Y_%m_%d_%H_%M_%S_%f")[:-3]
+        payload_dict["MAPCaptureTime"] = str_timestamp
+
+    # set latitude and longitude
+    try:
+        lat, lon = exif_reader.get_lat_lon()
+        if lat != None and lon != None:
+            payload_dict["MAPLongitude"] = lon
+            payload_dict["MAPLatitude"] = lat
+    except:
+        pass
+
+    # set heading
+    heading = exif_reader.get_rotation()
+    if heading is not None:
+        payload_dict["MAPCompassHeading"] = {}
+        payload_dict["MAPCompassHeading"]["TrueHeading"] = heading
+
+    for key, value in wanted_description_tags.items():
+        if key not in payload_dict and key in exif_image_description:
+            if type(wanted_description_tags[key]) is dict:
+                payload_dict[key] = {}
+                for key2, value2 in wanted_description_tags[key].items():
+                    if key2 not in payload_dict[key] and key2 in exif_image_description[key]:
+                        payload_dict[key][key2] = exif_image_description[key][key2]
+            else:
+                payload_dict[key] = exif_image_description[key]
+
     payload_json = json.dumps(payload_dict)
     # print(payload_json)
     exif_dict = piexif.load(filepath)
-    exif_dict['0th'][piexif.ImageIFD.ImageDescription] = payload_json.encode('utf-8')
+    exif_dict['0th'][piexif.ImageIFD.ImageDescription] = payload_json.encode(
+        'utf-8')
     exif_bytes = piexif.dump(exif_dict)
     piexif.insert(exif_bytes, filepath)
-    # pprint(exif_dict)
+    # pprint.pprint(exif_dict)
+    return True
+
+
+def image_files(files):
+    return [f for f in files if f.lower().endswith('.jpg')
+            or f.lower().endswith('.jpeg')]
+
+
+def process_image_tags(folder_path, dry_run) -> bool:
+    """processes image tags like exif, XMP and adds the necessary and optional tags for mapillary if possible
+       returns success
+    """
+    if dry_run:
+        print("*** DRY RUN, NOT ACTUALLY PROCESSING ANY IMAGE TAGS, THE FOLLOWING IS SAMPLE OUTPUT")
+    print("   *** Add Mapillary EXIF ImageDescription ***")
+    if not(os.path.isdir(folder_path)):
+        print("No valid directory given as parameter.")
+        return False
+
+    # compute totals for progress bar
+    total_images = 0
+    total_image_dirs = 0
+    for path, _, files in os.walk(folder_path):
+        new_images = len(image_files(files))
+        total_images += new_images
+        if new_images > 0:
+            total_image_dirs += 1
+
+    # initialize progress bars
+    total_pbar = tqdm(total=total_images)
+    if total_image_dirs > 1:
+        dirs_pbar = tqdm(total=total_image_dirs)
+    else:
+        dirs_pbar = None
+
+    # Loop over JPG files
+    for path, _, files in os.walk(folder_path):
+        if len(files) > 0:
+            tqdm.write("   *** Adding ImageDescription: " + path)
+            for file_name in image_files(files):
+                absolute_file_path = path + os.sep + file_name
+                if not dry_run:
+                    add_mapillary_tags(absolute_file_path)
+                else:
+                    time.sleep(1/total_images)
+                total_pbar.update()
+            if dirs_pbar:
+                dirs_pbar.update()
+    total_pbar.close()
+    if dirs_pbar:
+        dirs_pbar.close()
+
     return True
 
 
@@ -31,16 +150,4 @@ def add_mapillary_tags(filepath):
 #   Main
 #
 if __name__ == "__main__":
-    print ("*** Add Mapillary EXIF ImageDescription ***")
-    ordnerpfad = sys.argv[1]
-    if not(os.path.isdir(ordnerpfad)):
-        print("No valid directory given as parameter.")
-        exit(1)
-    # Loop over JPG files
-    for subdirz, dirz, filez in os.walk(ordnerpfad):
-        if len(filez) > 0:
-            print("\nAdding ImageDescription:", subdirz)
-            for f in tqdm(filez):
-                file_path = subdirz + os.sep + f
-                if file_path.lower().endswith('.jpg'):
-                    success = add_mapillary_tags(file_path)
+    process_image_tags(sys.argv[1])

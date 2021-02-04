@@ -51,7 +51,8 @@ def getGPS(filepath):
         else:
             return {}
         lat_text = str(latitude_ref.values) + str(convert_to_degress(latitude))
-        lon_text = str(longitude_ref.values) + str(convert_to_degress(longitude))
+        lon_text = str(longitude_ref.values) + \
+            str(convert_to_degress(longitude))
         return lat_value, lon_value, lat_text, lon_text, str(datetime_text)
 
 
@@ -60,22 +61,25 @@ def get_tile_directory_name(lat, lon, zoom):
     lat_rad = math.radians(lat)
     n = 2.0 ** zoom
     xtile = int((lon + 180.0) / 360.0 * n)
-    ytile = int((1.0 - math.log(math.tan(lat_rad) + (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
+    ytile = int((1.0 - math.log(math.tan(lat_rad) +
+                                (1 / math.cos(lat_rad))) / math.pi) / 2.0 * n)
     tile = r"OSM_{0}_{1}_{2}"
     return tile.format(zoom, xtile, ytile)
 
 
 # get coords from file, create target dir and move file to it
-def create_and_move_to_target(file_path,zoom_level):
+def create_and_move_to_target(file_path, zoom_level):
     gps = getGPS(file_path)
-    if gps!={}:
-        target_dir = target_path + get_tile_directory_name(gps[0], gps[1], zoom_level) + os.sep
+    if gps != {}:
+        target_dir = target_path + \
+            get_tile_directory_name(gps[0], gps[1], zoom_level) + os.sep
         if not os.path.isdir(target_dir):
             os.makedirs(target_dir)
-        target_file=target_dir + os.path.basename(os.path.dirname(file_path)) + "_" + os.path.basename(file_path)
+        target_file = target_dir + \
+            os.path.basename(os.path.dirname(file_path)) + \
+            "_" + os.path.basename(file_path)
         # print (target_file)
-        os.rename(file_path,target_file)
-
+        os.rename(file_path, target_file)
 
 
 # main
@@ -85,5 +89,4 @@ for subdir, dirz, filez in os.walk(source_path):
     for file in tqdm(filez):
         file_path = subdir + os.sep + file
         if (".jpg" in file_path.lower()) and not ("OSM_" in file_path):
-            create_and_move_to_target(file_path,zoom_level)
-
+            create_and_move_to_target(file_path, zoom_level)

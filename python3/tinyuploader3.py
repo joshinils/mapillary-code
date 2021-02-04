@@ -1,22 +1,24 @@
-import os
-import json
-import requests
 import argparse
-import time
+import json
+import os
 import pprint
+import time
+
+import requests
 from tqdm import tqdm
 
 
-def upload_imagery(session, filepath):
+def upload_image(session, filepath):
     filename = os.path.basename(filepath)
     fields = session['fields'].copy()
     fields['key'] = session['key_prefix'] + filename
     with open(filepath, 'rb') as f:
-        r = requests.post(session['url'], data=fields, files={'file': (filename, f)})
+        r = requests.post(session['url'], data=fields,
+                          files={'file': (filename, f)})
     r.raise_for_status()
 
 
-def create_session(subdir):
+def create_session(subdir, access_token, client_id):
     data = {
         'type': 'images/sequence'
     }
@@ -24,7 +26,8 @@ def create_session(subdir):
         "Authorization": "Bearer " + access_token,
         "Content-Type": "application/json"
     }
-    r = requests.post('https://a.mapillary.com/v3/me/uploads?client_id=' + client_id, data=json.dumps(data), headers=headers)
+    r = requests.post('https://a.mapillary.com/v3/me/uploads?client_id=' +
+                      client_id, data=json.dumps(data), headers=headers)
     session = r.json()
     # pprint(session)
     tqdm.write("Session open: " + session['key'])
@@ -34,88 +37,80 @@ def create_session(subdir):
     return session
 
 
-def publish_session(session):
+def publish_session(session, access_token, client_id):
     key = session['key']
     headers = {
         "Authorization": "Bearer " + access_token
     }
-    r = requests.put("https://a.mapillary.com/v3/me/uploads/" +key + "/closed?client_id=" + client_id, headers=headers)
+    r = requests.put("https://a.mapillary.com/v3/me/uploads/" +
+                     key + "/closed?client_id=" + client_id, headers=headers)
     tqdm.write("*** Session published: " + session['key'])
     tqdm.write(pprint.pformat(r))
     return
 
 
-def delete_session():
+def delete_session(access_token, client_id):
     headers = {
         "Authorization": "Bearer " + access_token
     }
-    r = requests.get("https://a.mapillary.com/v3/me/uploads?client_id=" + client_id, headers=headers)
+    r = requests.get(
+        "https://a.mapillary.com/v3/me/uploads?client_id=" + client_id, headers=headers)
     sessions = r.json()
     for session in sessions:
         print("Delete Session:", session['key'])
-        r = requests.delete("https://a.mapillary.com/v3/uploads/" + session['key'] + "?client_id=" + client_id, headers=headers)
+        r = requests.delete("https://a.mapillary.com/v3/uploads/" +
+                            session['key'] + "?client_id=" + client_id, headers=headers)
         r.raise_for_status()
 
 
 def image_files(files):
-    return [f for f in files if    f.lower().endswith('.jpg')
-                                or f.lower().endswith('.jpeg')
-                                or f.lower().endswith('.png')]
+    return [f for f in files if f.lower().endswith('.jpg')
+            or f.lower().endswith('.jpeg')]
 
-#
-#   Main
-#
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description = 'uploads images from IMAGES_PATH as an image sequence to mapillary',
-                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-d', '--images_path', type = str, default = r"D:\Mapillary\DCIM", help = 'path to images')
-    parser.add_argument('-n', '--dry_run', help = 'dry run, do not actually upload imagery', action = "store_true")
-    args = parser.parse_args()
-    images_path = args.images_path
-    dry_run = args.dry_run
+
+def upload_folder(folder_path, dry_run):
     if dry_run:
         print("*** DRY RUN, NOT ACTUALLY UPLOADING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
 
-
     client_id = 'd0FVV29VMDR6SUVrcV94cTdabHBoZzoxZjc2MTE1Mzc1YjMxNzhi'
-    print ("*** Read access token")
+    print("   *** Read access token")
     with open("accesstoken3.conf", "r") as image_name:
         access_token = image_name.read()
 
-    if not(os.path.isdir(images_path)):
+    if not(os.path.isdir(folder_path)):
         print("No valid directory given for upload as parameter.")
         exit(1)
 
     # compute totals for progress bar
     total_images = 0
     total_image_dirs = 0
-    for path, dirs, files in os.walk(images_path):
+    for path, _, files in os.walk(folder_path):
         new_images = len(image_files(files))
         total_images += new_images
         if new_images > 0:
             total_image_dirs += 1
 
     # initialize progress bars
-    total_pbar = tqdm(total = total_images)
+    total_pbar = tqdm(total=total_images)
     if total_image_dirs > 1:
-        dirs_pbar = tqdm(total = total_image_dirs)
+        dirs_pbar = tqdm(total=total_image_dirs)
     else:
         dirs_pbar = None
 
-    for path, dirs, files in os.walk(images_path):
+    for path, _, files in os.walk(folder_path):
         if len(files) > 0:
-            tqdm.write("*** Uploading directory: " + path)
+            tqdm.write("   *** Uploading directory: " + path)
             if not dry_run:
-                session = create_session(path)
+                session = create_session(path, access_token, client_id)
             for image_name in image_files(files):
-                filepath = path + os.sep + image_name
+                absolute_filepath = path + os.sep + image_name
                 if not dry_run:
-                    upload_imagery(session, filepath)
+                    upload_image(session, absolute_filepath)
                 else:
                     time.sleep(1/total_images)
                 total_pbar.update()
             if not dry_run:
-                publish_session(session)
+                publish_session(session, access_token, client_id)
             else:
                 time.sleep(1)
             if dirs_pbar:
@@ -125,3 +120,18 @@ if __name__ == "__main__":
         dirs_pbar.close()
 
 
+#
+#   Main
+#
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='uploads images from IMAGES_PATH as an image sequence to mapillary',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-d', '--images_path', type=str,
+                        default=r"D:\Mapillary\DCIM", help='path to images')
+    parser.add_argument(
+        '-n', '--dry_run', help='dry run, do not actually upload imagery', action="store_true")
+    args = parser.parse_args()
+    images_path = args.images_path
+    dry_run = args.dry_run
+
+    upload_folder(images_path, dry_run)
