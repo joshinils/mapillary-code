@@ -59,8 +59,7 @@ def delete_session():
 
 def image_files(files):
     return [f for f in files if    f.lower().endswith('.jpg')
-                                or f.lower().endswith('.jpeg')
-                                or f.lower().endswith('.png')]
+                                or f.lower().endswith('.jpeg')]
 
 #
 #   Main

@@ -25,44 +25,16 @@ class PILExifReader:
         self._filepath = filepath
         with Image.open(filepath) as image:
             self._exif = self.get_exif_data(image)
+            pprint.pprint(self._exif)
 
-        self.remove_XMP_description()
+    def remove_XMP_description(self) -> bool:
+        """ sets the XMP description tag from the images metadata to " "
+            returns success
+        """
+        xmp_file = libxmp.XMPFiles( file_path = self._filepath, open_forupdate=True )
 
-    def remove_XMP_description(self):
-        xmpfile = libxmp.XMPFiles( file_path = self._filepath, open_forupdate=True )
-
-        #Get XMP from file:
-        xmp = xmpfile.get_xmp()
-
-        # xmp_dict = file_to_dict(self._filepath)
-
-        # try:
-        #     ns_xmp = xmp_dict[libxmp.consts.XMP_NS_XMP]
-        #     #pprint.pprint(ns_xmp)
-        # except:
-        #     print("XMP_NS_XMP")
-
-        # try:
-        #     ns_dc = xmp_dict[libxmp.consts.XMP_NS_DC]
-        #     #pprint.pprint(ns_dc)
-        # except:
-        #     print("XMP_NS_DC")
-
-        # try:
-        #     ns_IPTCCore = xmp_dict[libxmp.consts.XMP_NS_IPTCCore]
-        #     #pprint.pprint(ns_IPTCCore)
-        # except:
-        #     print("XMP_NS_IPTCCore")
-
-        # #print("\nxmp:")
-        # #pprint.pprint(xmp)
-
-        # try:
-        #     description = xmp.get_property(libxmp.consts.XMP_NS_XMP, 'xmp:description' )
-        #     print("\ndescription:")
-        #     #pprint.pprint(description)
-        # except:
-        #     pass
+        # Get XMP from file
+        xmp = xmp_file.get_xmp()
 
         # change the xmp
         try:
@@ -75,13 +47,16 @@ class PILExifReader:
             xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u'' )
         except:pass
 
-        if xmpfile.can_put_xmp(xmp):
-            xmpfile.put_xmp(xmp)
+        if xmp_file.can_put_xmp(xmp):
+            xmp_file.put_xmp(xmp)
+            xmp_file.close_file()
+            return True
         else:
             print("can not put xmp")
-        xmpfile.close_file()
+            return False
 
-    def get_exif_data(self, image):
+    @staticmethod
+    def get_exif_data(image):
         """Returns a dictionary from the exif data of an PIL Image
         item. Also converts the GPS Tags"""
         exif_data = {}
@@ -114,38 +89,27 @@ class PILExifReader:
         return exif_data
 
     def read_capture_time(self):
+        """
+            returns None or datetime.datetime
+        """
         time_tag = "DateTimeOriginal"
 
         # read and format capture time
         if self._exif == None:
             print("Exif is none.")
 
-        #default value if none exists
-        capture_time = "1970_01_01_00_00_00_000"
         if time_tag in self._exif:
             capture_time = self._exif[time_tag]
-        elif "ImageDescription" in self._exif or "Description" in self._exif:
-            pprint.pprint(self._exif)
-            try:
-                dict = ast.literal_eval(self._exif["ImageDescription"])
-                capture_time = dict["MAPCaptureTime"]
-                pprint.pprint(dict)
-            except:
-                try:
-                    dict = ast.literal_eval(self._exif["Description"])
-                    pprint.pprint(dict)
-                    capture_time = dict["MAPCaptureTime"]
-                except:
-                    print("No time tag in " + self._filepath)
+            capture_time = capture_time.replace(" ","_")
+            capture_time = capture_time.replace(":","_")
+            # return as datetime object
+            return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
         else:
             print("No time tag in " + self._filepath)
-        capture_time = capture_time.replace(" ","_")
-        capture_time = capture_time.replace(":","_")
+            return None
 
-        # return as datetime object
-        return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
-
-    def _get_if_exist(self, data, key):
+    @staticmethod
+    def _get_if_exist(data, key):
         if key in data:
             return data[key]
         else:
@@ -154,23 +118,19 @@ class PILExifReader:
     def get_exif_tag(self, key_name):
         return self._exif[key_name] or None
 
-    def _convert_to_degress(self, value):
+    @staticmethod
+    def _convert_to_degress(value):
         """Helper function to convert the GPS coordinates stored in
         the EXIF to degrees in float format."""
-        d = value[0]
-        # d0 = value[0][0]
-        # d1 = value[0][1]
-        # d = float(d0) / float(d1)
 
-        m = value[1]
-        # m0 = value[1][0]
-        # m1 = value[1][1]
-        # m = float(m0) / float(m1)
-
-        s = value[2]
-        # s0 = value[2][0]
-        # s1 = value[2][1]
-        # s = float(s0) / float(s1)
+        if type(value[0]) is tuple:
+            d = float(value[0][0]) / float(value[0][1])
+            m = float(value[1][0]) / float(value[1][1])
+            s = float(value[2][0]) / float(value[2][1])
+        else:
+            d = value[0]
+            m = value[1]
+            s = value[2]
 
         return d + (m / 60.0) + (s / 3600.0)
 
@@ -205,7 +165,8 @@ class PILExifReader:
         else:
             return None
 
-    def calc_tuple(self, tup):
+    @staticmethod
+    def calc_tuple(tup):
         if tup is None:
             return None
         return int(tup[0]) / int(tup[1])
@@ -225,11 +186,10 @@ class PILExifReader:
         for tag in ('GPSImgDirection', 'GPSTrack'):
             gps_direction = self._get_if_exist(gps_info, tag)
             # direction = self.calc_tuple(gps_direction)
-            direction = gps_direction
-            if direction == None:
-                continue
-            else:
-                return direction
+            if gps_direction is not None:
+                if type(gps_direction) is tuple:
+                    return self.calc_tuple(gps_direction)
+                return gps_direction
         return None
 
     def get_speed(self):
@@ -265,7 +225,8 @@ class PILExifReader:
             return None
         return speed
 
-    def is_ok_num(self, val, minVal, maxVal):
+    @staticmethod
+    def is_ok_num(val, minVal, maxVal):
         try:
             num = int(val)
         except ValueError:
