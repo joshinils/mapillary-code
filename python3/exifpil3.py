@@ -2,8 +2,7 @@ import ast
 import datetime
 import pprint
 
-import libxmp  # python-xmp-toolkit, https://python-xmp-toolkit.readthedocs.io/en/latest/installation.html
-from libxmp.utils import file_to_dict
+import subprocess
 # import struct  # Only to catch struct.error due to error in PIL / Pillow.
 from PIL import Image
 from PIL.ExifTags import GPSTAGS, TAGS
@@ -26,7 +25,6 @@ class PILExifReader:
         self._filepath = filepath
         with Image.open(filepath) as image:
             self._exif = self.get_exif_data(image)
-            pprint.pprint(self._exif)
 
     @staticmethod
     def get_exif_data(image):
@@ -100,38 +98,21 @@ class PILExifReader:
             return False
         return True
 
-    def remove_XMP_description(self) -> bool:
-        """ sets the XMP description tag from the images metadata to " "
-            returns success
-        """
-        xmp_file = libxmp.XMPFiles(
-            file_path=self._filepath, open_forupdate=True)
+    def remove_XMP_description(self):
+        subprocess.Popen(["exiftool", "-XMP:ALL=", self._filepath],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        # Get XMP from file
-        xmp = xmp_file.get_xmp()
+    def get_XMP_description(self):
+        sub = subprocess.Popen(["exiftool", "-s", "-s", "-s", "-description", self._filepath],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = sub.communicate("")
+        return output.decode("utf-8").rstrip()
 
-        # change the xmp
-        try:
-            xmp.set_property(libxmp.consts.XMP_NS_XMP, u'description', u'')
-        except:
-            pass
-        try:
-            xmp.set_property(libxmp.consts.XMP_NS_IPTCCore,
-                             u'description', u'')
-        except:
-            pass
-        try:
-            xmp.set_property(libxmp.consts.XMP_NS_DC, u'description[1]', u'')
-        except:
-            pass
-
-        if xmp_file.can_put_xmp(xmp):
-            xmp_file.put_xmp(xmp)
-            xmp_file.close_file()
-            return True
-        else:
-            print("can not put xmp")
-            return False
+    def get_datetimeoriginal(self):
+        sub = subprocess.Popen(["exiftool", "-s", "-s", "-s", "-datetimeoriginal", self._filepath],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = sub.communicate("")
+        return output.decode("utf-8").rstrip()
 
     def read_capture_time(self):
         """
@@ -145,13 +126,18 @@ class PILExifReader:
 
         if time_tag in self._exif:
             capture_time = self._exif[time_tag]
-            capture_time = capture_time.replace(" ", "_")
-            capture_time = capture_time.replace(":", "_")
-            # return as datetime object
-            return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
         else:
-            print("No time tag in " + self._filepath)
-            return None
+            capture_time = self.get_datetimeoriginal()
+            if len(capture_time) < 23:
+                capture_time += "1970_01_01_00_00_00_000"[len(capture_time):]
+
+            if capture_time == "":
+                print("No time tag in " + self._filepath)
+                return None
+        capture_time = capture_time.replace(" ", "_")
+        capture_time = capture_time.replace(":", "_")
+        # return as datetime object
+        return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
 
     def get_exif_tag(self, key_name):
         return self._exif[key_name] or None

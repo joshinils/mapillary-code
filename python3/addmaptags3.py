@@ -1,11 +1,13 @@
-import os
-import sys
+import ast
 import json
+import os
+import pprint
+import sys
+
 import piexif
 from tqdm import tqdm
-import pprint
+
 from exifpil3 import PILExifReader
-import ast
 
 
 def add_mapillary_tags(filepath):
@@ -13,6 +15,10 @@ def add_mapillary_tags(filepath):
 
     exif_image_description = ast.literal_eval(
         exif_reader.get_exif_tag("ImageDescription"))
+
+    xmp_description = ast.literal_eval(exif_reader.get_XMP_description() or "{}")
+    #pprint.pprint(xmp_description)
+
     exif_reader.remove_XMP_description()
 
     wanted_description_tags = {
