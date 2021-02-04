@@ -18,7 +18,7 @@ def upload_image(session, filepath):
     r.raise_for_status()
 
 
-def create_session(subdir):
+def create_session(subdir, access_token, client_id):
     data = {
         'type': 'images/sequence'
     }
@@ -37,7 +37,7 @@ def create_session(subdir):
     return session
 
 
-def publish_session(session):
+def publish_session(session, access_token, client_id):
     key = session['key']
     headers = {
         "Authorization": "Bearer " + access_token
@@ -49,7 +49,7 @@ def publish_session(session):
     return
 
 
-def delete_session():
+def delete_session(access_token, client_id):
     headers = {
         "Authorization": "Bearer " + access_token
     }
@@ -101,7 +101,7 @@ def upload_folder(folder_path, dry_run):
         if len(files) > 0:
             tqdm.write("   *** Uploading directory: " + path)
             if not dry_run:
-                session = create_session(path)
+                session = create_session(path, access_token, client_id)
             for image_name in image_files(files):
                 absolute_filepath = path + os.sep + image_name
                 if not dry_run:
@@ -110,7 +110,7 @@ def upload_folder(folder_path, dry_run):
                     time.sleep(1/total_images)
                 total_pbar.update()
             if not dry_run:
-                publish_session(session)
+                publish_session(session, access_token, client_id)
             else:
                 time.sleep(1)
             if dirs_pbar:
