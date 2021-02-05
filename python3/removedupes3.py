@@ -192,12 +192,10 @@ class ImageRemover:
     """Moves images that are (almost) duplicates or contains errors in GPS
   data into separate directories."""
 
-    def __init__(self, src_dir, duplicate_dir, error_dir):
+    def __init__(self, src_dir):
         self._testers = []
         self._error_finders = []
         self._src_dir = src_dir
-        self._duplicate_dir = duplicate_dir
-        self._error_dir = error_dir
         self._dryrun = False
         self.verbose = 0
 
@@ -214,18 +212,16 @@ class ImageRemover:
         self._error_finders.append(finder)
 
     def _move_into_error_dir(self, file):
-        self._move_into_dir(file, self._error_dir)
+        self._move_into_dir(file)
 
     def _move_into_duplicate_dir(self, file):
-        self._move_into_dir(file, self._duplicate_dir)
+        self._move_into_dir(file)
 
-    def _move_into_dir(self, file, dir):
-        if not self._dryrun and not os.path.exists(dir):
-            os.makedirs(dir)
-        filename = os.path.basename(file)
-        if not self._dryrun:
-            os.rename(file, os.path.join(dir, filename))
-        # print(file, " => ", dir)
+    def _move_into_dir(self, file):
+        if not self._dryrun: # and not os.path.exists(dir):
+            if verbose != 0:
+                print("Delete:", file)
+            os.remove(file)
 
     def _read_capture_time(self, filepath):
         reader = PILExifReader(filepath)
@@ -306,9 +302,7 @@ if __name__ == "__main__":
     if not(os.path.isdir(src_dir)):
         print("No valid directory given as parameter.")
         exit(1)
-    duplicate_dir = src_dir + "\\duplicates\\"
-    error_dir = src_dir + "\\errors\\"
     distance_finder = GPSDistanceDuplicateFinder(distance)
-    image_remover = ImageRemover(src_dir, duplicate_dir, error_dir)
+    image_remover = ImageRemover(src_dir)
     image_remover.add_duplicate_finder(distance_finder)
     image_remover.do_magic()

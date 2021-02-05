@@ -1,9 +1,8 @@
-import argparse
 import json
 import os
+import sys
 import pprint
 import time
-
 import requests
 from tqdm import tqdm
 
@@ -124,14 +123,9 @@ def upload_folder(folder_path, dry_run):
 #   Main
 #
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='uploads images from IMAGES_PATH as an image sequence to mapillary',
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-d', '--images_path', type=str,
-                        default=r"D:\Mapillary\DCIM", help='path to images')
-    parser.add_argument(
-        '-n', '--dry_run', help='dry run, do not actually upload imagery', action="store_true")
-    args = parser.parse_args()
-    images_path = args.images_path
-    dry_run = args.dry_run
-
-    upload_folder(images_path, dry_run)
+    print ("*** Mapillary Tiny Uploader ***")
+    ordnerpfad = sys.argv[1]
+    if not(os.path.isdir(ordnerpfad)):
+        print("No valid directory given as parameter.")
+        exit(1)
+    upload_folder(ordnerpfad, False)

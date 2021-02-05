@@ -126,6 +126,7 @@ class PILExifReader:
 
         if time_tag in self._exif:
             capture_time = self._exif[time_tag]
+            capture_time += "_000"
         else:
             capture_time = self.get_datetimeoriginal()
             if len(capture_time) < 23:

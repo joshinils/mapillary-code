@@ -84,4 +84,4 @@ def optimize_folder(folder_path, dry_run):
 #   Main
 #
 if __name__ == "__main__":
-    optimize_folder(sys.argv[1])
+    optimize_folder(sys.argv[1], False)
