@@ -1,11 +1,12 @@
 import json
+import logging
 import os
-import sys
 import pprint
+import sys
 import time
+
 import requests
 import tqdm
-import logging
 
 
 def upload_image(session, filepath):

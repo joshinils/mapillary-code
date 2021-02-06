@@ -1,8 +1,8 @@
 import ast
 import datetime
 import pprint
-
 import subprocess
+
 # import struct  # Only to catch struct.error due to error in PIL / Pillow.
 from PIL import Image
 from PIL.ExifTags import GPSTAGS, TAGS
@@ -101,6 +101,12 @@ class PILExifReader:
     def remove_XMP_description(self):
         subprocess.Popen(["exiftool", "-XMP:ALL=", self._filepath],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    def get_exif_log(self):
+        sub = subprocess.Popen(["exiftool", self._filepath, "-G0:2"],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output, err = sub.communicate("")
+        return output.decode("utf-8").rstrip()
 
     def get_XMP_description(self):
         sub = subprocess.Popen(["exiftool", "-s", "-s", "-s", "-description", self._filepath],

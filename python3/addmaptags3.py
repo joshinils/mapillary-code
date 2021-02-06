@@ -1,10 +1,11 @@
 import ast
 import json
+import logging
 import os
 import pprint
+import subprocess
 import sys
 import time
-import logging
 
 import piexif
 from tqdm import tqdm
@@ -13,7 +14,11 @@ from exifpil3 import PILExifReader
 
 
 def add_mapillary_tags(filepath, log):
+    exif_dict = piexif.load(filepath)
+    log.debug("before?: " + pprint.pformat(exif_dict))
+
     exif_reader = PILExifReader(filepath)
+    log.debug("exif log:" + exif_reader.get_exif_log())
 
     exif_image_description = exif_reader.get_exif_tag("ImageDescription")
     try:
@@ -25,7 +30,7 @@ def add_mapillary_tags(filepath, log):
         exif_reader.get_XMP_description() or "{}")
     # pprint.pprint(xmp_description)
 
-    exif_reader.remove_XMP_description()
+    #exif_reader.remove_XMP_description()
 
     wanted_description_tags = {
         "MAPCompassHeading":
