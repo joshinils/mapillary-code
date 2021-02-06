@@ -11,6 +11,7 @@
 
 import logging
 import os
+import pprint
 import sys
 import time
 
@@ -22,6 +23,7 @@ def optimize_file(file_path, log):
     image_org = Image.open(file_path)
     try:
         exif_data = image_org.info['exif']
+        log.debug("exif_data: " + pprint.pformat(exif_data) )
         image_rgb = ImageOps.autocontrast(image_org)
         image_rgb.save(file_path, optimize=True, quality=75, exif=exif_data)
     except Exception as error:
@@ -38,7 +40,7 @@ def image_files(files):
 
 def optimize_folder(folder_path, dry_run, log):
     if dry_run:
-        log.info("*** DRY RUN, NOT ACTUALLY OPTIMIZING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
+        log.warning("*** DRY RUN, NOT ACTUALLY OPTIMIZING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
     log.info("   *** JPEG optimizer ***")
     if not(os.path.isdir(folder_path)):
         log.warning("No valid directory given as parameter.")

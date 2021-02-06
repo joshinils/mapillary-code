@@ -32,27 +32,21 @@ class TqdmLoggingHandler(logging.Handler):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="""Optimize images, process image tags and upload images from IMAGES_PATH as image sequence(s) to mapillary.com.\n
+    parser = argparse.ArgumentParser(description="""Process image tags, optimize images and upload images from IMAGES_PATH as image sequence(s) to mapillary.com.\n
     If you do not process the tags, the images may not get recognized, or get put into one sequence regardless of the folder structure.\n
-    If the optimize flag is set, images may get deleted""",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    If the optimize flag is set, images may get deleted""", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-d', '--images_path', type=str,
                         default=r"D:\Mapillary\DCIM", help='path to images')
     parser.add_argument(
         '-n', '--dry_run', help='dry run, do not actually change any imagery, instead sleep for a very short while', action="store_true")
-    parser.add_argument('-o', '--optimize_images',
-                        help='do not optimize jpeg images', action="store_false")
     parser.add_argument('-p', '--process_tags',
                         help='do not process the image tags', action="store_false")
+    parser.add_argument('-o', '--optimize_images',
+                        help='do not optimize jpeg images', action="store_false")
     parser.add_argument('-u', '--upload_images',
                         help='do not upload the images', action="store_false")
     parser.add_argument('-l', '--log_level',
-                        help="""set the wanted logging verbosity,
-                        0: DEBUG,
-                        1: INFO,
-                        2: WARNING,
-                        3: ERROR,
-                        4: FATAL""", default=1, type=int)
+                        help="""set the wanted logging verbosity, 0: DEBUG, 1: INFO, 2: WARNING, 3: ERROR, 4: FATAL""", default=1, type=int)
 
     # parse arguments
     args = parser.parse_args()
@@ -81,7 +75,7 @@ if __name__ == "__main__":
         log_level = logging.FATAL
 
     logging.basicConfig(filename=log_path + "mapillary_main_" + datetime.now().strftime("%Y-%m-%dT%H%M%S") +
-                         ".log", level=log_level, format='%(levelname)-7s %(asctime)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+                        ".log", level=log_level, format='%(levelname)-7s %(asctime)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     log = logging.getLogger(__name__)
     log.addHandler(TqdmLoggingHandler())
 
@@ -89,22 +83,15 @@ if __name__ == "__main__":
 
     log.debug("images_path " + str(images_path))
     log.debug("dry_run " + str(dry_run))
-    log.debug("optimize_images " + str(optimize_images))
     log.debug("process_tags " + str(process_tags))
+    log.debug("optimize_images " + str(optimize_images))
     log.debug("upload_images " + str(upload_images))
-
 
     # for i in tqdm.tqdm(range(100)):
     #     time.sleep(1)
     #     log.info(i)
 
     # do the main work
-    if optimize_images:
-        optimize_folder(images_path, dry_run, log)
-    else:
-        log.info(
-            "not optimizing the images, as specified by commandline argument.")
-
     if process_tags:
         success = process_image_tags(images_path, dry_run, log)
         if not success:
@@ -114,8 +101,12 @@ if __name__ == "__main__":
         log.info(
             "not processing the image tags, as specified by commandline argument.")
 
+    if optimize_images:
+        optimize_folder(images_path, dry_run, log)
+    else:
+        log.info("not optimizing the images, as specified by commandline argument.")
+
     if upload_images:
         upload_folder(images_path, dry_run, log)
     else:
-        log.info(
-            "not uploading the images, as specified by commandline argument.")
+        log.info("not uploading the images, as specified by commandline argument.")

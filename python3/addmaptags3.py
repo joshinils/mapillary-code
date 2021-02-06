@@ -14,9 +14,6 @@ from exifpil3 import PILExifReader
 
 
 def add_mapillary_tags(filepath, log):
-    exif_dict = piexif.load(filepath)
-    log.debug("before?: " + pprint.pformat(exif_dict))
-
     exif_reader = PILExifReader(filepath)
     log.debug("exif log:" + exif_reader.get_exif_log())
 
@@ -26,9 +23,11 @@ def add_mapillary_tags(filepath, log):
     except:
         pass
 
+    log.debug("exif_image_description: " + pprint.pformat(exif_image_description))
+
     xmp_description = ast.literal_eval(
         exif_reader.get_XMP_description() or "{}")
-    # pprint.pprint(xmp_description)
+    log.debug("xmp_description: " + pprint.pformat(xmp_description))
 
     #exif_reader.remove_XMP_description()
 
