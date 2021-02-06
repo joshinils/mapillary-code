@@ -126,15 +126,15 @@ class PILExifReader:
 
         if time_tag in self._exif:
             capture_time = self._exif[time_tag]
-            capture_time += "_000"
         else:
             capture_time = self.get_datetimeoriginal()
-            if len(capture_time) < 23:
-                capture_time += "1970_01_01_00_00_00_000"[len(capture_time):]
-
             if capture_time == "":
                 print("No time tag in " + self._filepath)
                 return None
+
+        if len(capture_time) < 23:
+            capture_time += "1970_01_01_00_00_00_000"[len(capture_time):]
+
         capture_time = capture_time.replace(" ", "_")
         capture_time = capture_time.replace(":", "_")
         # return as datetime object

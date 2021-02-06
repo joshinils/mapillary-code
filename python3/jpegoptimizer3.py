@@ -9,6 +9,7 @@
 #   warning: deletes all broken pictures!
 #
 
+import logging
 import os
 import sys
 import time
@@ -17,14 +18,14 @@ from PIL import Image, ImageOps
 from tqdm import tqdm
 
 
-def optimize_file(file_path):
+def optimize_file(file_path, log):
     image_org = Image.open(file_path)
     try:
         exif_data = image_org.info['exif']
         image_rgb = ImageOps.autocontrast(image_org)
         image_rgb.save(file_path, optimize=True, quality=75, exif=exif_data)
     except Exception as error:
-        print(error)
+        log.error(error)
         image_org.close()
         return False
     return True
@@ -35,12 +36,12 @@ def image_files(files):
             or f.lower().endswith('.jpeg')]
 
 
-def optimize_folder(folder_path, dry_run):
+def optimize_folder(folder_path, dry_run, log):
     if dry_run:
-        print("*** DRY RUN, NOT ACTUALLY OPTIMIZING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
-    print("   *** JPEG optimizer ***")
+        log.info("*** DRY RUN, NOT ACTUALLY OPTIMIZING ANY IMAGERY, THE FOLLOWING IS SAMPLE OUTPUT")
+    log.info("   *** JPEG optimizer ***")
     if not(os.path.isdir(folder_path)):
-        print("No valid directory given as parameter.")
+        log.warning("No valid directory given as parameter.")
         exit(1)
 
     # compute totals for progress bar
@@ -62,13 +63,13 @@ def optimize_folder(folder_path, dry_run):
     # Loop over JPG files
     for path, _, files in os.walk(folder_path):
         if len(files) > 0:
-            tqdm.write("   *** Optimizing: " + path)
+            log.info("   *** Optimizing: " + path)
             for image_name in image_files(files):
                 absolute_filepath = path + os.sep + image_name
                 if not dry_run:
-                    success = optimize_file(absolute_filepath)
+                    success = optimize_file(absolute_filepath, log)
                     if not success:
-                        tqdm.write("removing image:", absolute_filepath)
+                        log.info("removing image:", absolute_filepath)
                         os.remove(absolute_filepath)
                 else:
                     time.sleep(1/total_images)
@@ -84,4 +85,4 @@ def optimize_folder(folder_path, dry_run):
 #   Main
 #
 if __name__ == "__main__":
-    optimize_folder(sys.argv[1], False)
+    optimize_folder(sys.argv[1], False, log=logging.getLogger(__name__))
