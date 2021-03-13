@@ -93,9 +93,9 @@ def upload_folder(folder_path, dry_run, log):
             total_image_dirs += 1
 
     # initialize progress bars
-    total_pbar = tqdm.tqdm(total=total_images)
+    total_pbar = tqdm.tqdm(total=total_images, dynamic_ncols=True)
     if total_image_dirs > 1:
-        dirs_pbar = tqdm.tqdm(total=total_image_dirs)
+        dirs_pbar = tqdm.tqdm(total=total_image_dirs, dynamic_ncols=True)
     else:
         dirs_pbar = None
 

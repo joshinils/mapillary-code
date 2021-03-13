@@ -23,13 +23,14 @@ def add_mapillary_tags(filepath, log):
     except:
         pass
 
-    log.debug("exif_image_description: " + pprint.pformat(exif_image_description))
+    log.debug("exif_image_description: " +
+              pprint.pformat(exif_image_description))
 
     xmp_description = ast.literal_eval(
         exif_reader.get_XMP_description() or "{}")
     log.debug("xmp_description: " + pprint.pformat(xmp_description))
 
-    #exif_reader.remove_XMP_description()
+    # exif_reader.remove_XMP_description()
 
     wanted_description_tags = {
         "MAPCompassHeading":
@@ -114,7 +115,8 @@ def process_image_tags(folder_path, dry_run, log) -> bool:
        returns success
     """
     if dry_run:
-        log.warning("*** DRY RUN, NOT ACTUALLY PROCESSING ANY IMAGE TAGS, THE FOLLOWING IS SAMPLE OUTPUT")
+        log.warning(
+            "*** DRY RUN, NOT ACTUALLY PROCESSING ANY IMAGE TAGS, THE FOLLOWING IS SAMPLE OUTPUT")
     log.info("   *** Add Mapillary EXIF ImageDescription ***")
     if not(os.path.isdir(folder_path)):
         log.warning("No valid directory given as parameter.")
@@ -130,9 +132,9 @@ def process_image_tags(folder_path, dry_run, log) -> bool:
             total_image_dirs += 1
 
     # initialize progress bars
-    total_pbar = tqdm(total=total_images)
+    total_pbar = tqdm(total=total_images, dynamic_ncols=True)
     if total_image_dirs > 1:
-        dirs_pbar = tqdm(total=total_image_dirs)
+        dirs_pbar = tqdm(total=total_image_dirs, dynamic_ncols=True)
     else:
         dirs_pbar = None
 

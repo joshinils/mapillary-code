@@ -438,7 +438,7 @@ class Sequence(object):
             new_dir = os.path.join(self.filepath, sub_path, str(i))
             if not os.path.isdir(new_dir):
                 os.makedirs(new_dir)
-            for filepath in tqdm.tqdm(group):
+            for filepath in tqdm.tqdm(group, dynamic_ncols=True):
                 filename = os.path.basename(filepath)
                 dirk = os.path.dirname(filepath).split(os.sep)[-1] + "_"
                 os.rename(filepath, os.path.join(new_dir, dirk + filename))

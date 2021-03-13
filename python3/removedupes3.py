@@ -218,7 +218,7 @@ class ImageRemover:
         self._move_into_dir(file)
 
     def _move_into_dir(self, file):
-        if not self._dryrun: # and not os.path.exists(dir):
+        if not self._dryrun:  # and not os.path.exists(dir):
             if verbose != 0:
                 print("Delete:", file)
             os.remove(file)
@@ -245,14 +245,14 @@ class ImageRemover:
         files = []
         for subdirz, dirz, filez in os.walk(self._src_dir):
             print("Search files:", subdirz)
-            for f in tqdm(filez):
+            for f in tqdm(filez, dynamic_ncols=True):
                 file_path = subdirz + os.sep + f
                 if file_path.lower().endswith('.jpg'):
                     # print(file_path)
                     files.append(file_path)
         capturetime, files = self._sort_file_list(files)
         print("Check", len(files), "files.")
-        for file_path in tqdm(files):
+        for file_path in tqdm(files, dynamic_ncols=True):
             exif_reader = PILExifReader(file_path)
             is_error = self._handle_possible_erro(file_path, exif_reader)
             if not is_error:

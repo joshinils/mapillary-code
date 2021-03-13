@@ -104,7 +104,7 @@ class PILExifReader:
 
     def get_exif_log(self):
         sub = subprocess.Popen(["exiftool", self._filepath, "-G0:2"],
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         output, err = sub.communicate("")
         return output.decode("utf-8").rstrip()
 
