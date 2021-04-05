@@ -99,7 +99,7 @@ def upload_folder(folder_path, dry_run, log):
     else:
         dirs_pbar = None
 
-    for path, _, files in os.walk(folder_path):
+    for path, _, files in sorted(os.walk(folder_path)):
         if len(files) > 0:
             log.info("   *** Uploading directory: " + path)
             if not dry_run:
