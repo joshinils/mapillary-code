@@ -12,6 +12,7 @@ from tqdm import tqdm
 
 from exifpil3 import PILExifReader
 
+import PIL
 
 def add_mapillary_tags(filepath, log):
     exif_reader = PILExifReader(filepath)
@@ -80,7 +81,7 @@ def add_mapillary_tags(filepath, log):
     heading = exif_reader.get_rotation()
     if heading is not None:
         payload_dict["MAPCompassHeading"] = {}
-        payload_dict["MAPCompassHeading"]["TrueHeading"] = heading
+        payload_dict["MAPCompassHeading"]["TrueHeading"] = float(heading)
 
     if type(exif_image_description) is dict:
         for key, value in wanted_description_tags.items():
