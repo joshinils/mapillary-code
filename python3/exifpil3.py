@@ -147,7 +147,10 @@ class PILExifReader:
         return datetime.datetime.strptime(capture_time, '%Y_%m_%d_%H_%M_%S_%f')
 
     def get_exif_tag(self, key_name):
-        return self._exif[key_name] or None
+        if key_name in self._exif:
+            return self._exif[key_name]
+        else:
+            return None
 
     def get_lat_lon(self):
         """Returns the latitude and longitude, if available, from the
